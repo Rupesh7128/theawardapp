@@ -69,5 +69,10 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if false;
     }
+
+    match /waitlist/{docId} {
+      allow create, update: if request.resource.data.keys().hasAll(['email', 'createdAt']);
+      allow read, delete: if isAdmin();
+    }
   }
 }

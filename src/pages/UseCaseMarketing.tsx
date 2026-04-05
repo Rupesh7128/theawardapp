@@ -1,10 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import {
   ArrowRight, ArrowLeft, Check, Trophy, TrendingUp, Target,
   Share2, Mail, Megaphone, BarChart2, RefreshCw, Users
 } from 'lucide-react';
+import WaitlistForm from '../components/WaitlistForm';
 
 const campaignExamples = [
   { title: 'Best Marketing Campaigns 2026', votes: '19,200', leads: '3,900', nominees: 74 },
@@ -45,7 +45,6 @@ const idealFor = [
 ];
 
 export default function UseCaseMarketing() {
-  const { signIn } = useAuth();
 
   return (
     <div className="bg-white min-h-screen">
@@ -73,17 +72,8 @@ export default function UseCaseMarketing() {
             Run award campaigns where nominees share your brand to their audiences for free. Capture thousands of leads. Build your list. All with zero ad spend.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              onClick={signIn}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#111111] px-7 py-3.5 text-sm font-semibold text-white hover:bg-black transition-colors"
-            >
-              Launch Your Marketing Award
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            <a href="#examples" className="inline-flex items-center gap-1 text-sm font-semibold text-[#666666] hover:text-[#111111] transition-colors">
-              See campaign examples
-              <ArrowRight className="h-3.5 w-3.5" />
-            </a>
+            <WaitlistForm source="marketing-hero" className="max-w-md mx-auto" />
+            <p className="mt-3 text-xs text-[#999]">Not live yet — join the waitlist for early access.</p>
           </div>
         </div>
       </section>
@@ -238,17 +228,11 @@ export default function UseCaseMarketing() {
 
       {/* CTA */}
       <section className="py-24 px-6 bg-[#111111] text-white text-center">
-        <div className="mx-auto max-w-2xl">
+        <div className="mx-auto max-w-xl">
           <Megaphone className="h-8 w-8 text-white mx-auto mb-5" />
           <h2 className="text-3xl sm:text-4xl font-bold">Launch your first award campaign today</h2>
-          <p className="mt-4 text-[#666666]">Stop paying for ads. Let nominees carry your brand for free.</p>
-          <button
-            onClick={signIn}
-            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-sm font-semibold text-[#111111] hover:bg-[#FAFAFA] transition-colors"
-          >
-            Create Your Marketing Award
-            <ArrowRight className="h-4 w-4" />
-          </button>
+          <p className="mt-4 text-[#666666]">We're not live yet — join the waitlist and get early beta access.</p>
+          <WaitlistForm source="marketing-cta" dark className="mt-8" />
         </div>
       </section>
     </div>
