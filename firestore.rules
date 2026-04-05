@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.keys().hasAll(['email', 'createdAt']);
+      allow update: if isOwner(userId) || isAdmin();
+    }
+
+    match /awards/{awardId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      
+      function ownsAward(awardId) {
+        return get(/databases/$(database)/documents/awards/$(awardId)).data.ownerId == request.auth.uid;
+      }
+      
+      allow create: if isAuthenticated() && ownsAward(request.resource.data.awardId);
+      allow update, delete: if isAuthenticated() && (ownsAward(resource.data.awardId) || isAdmin());
+    }
+
+    match /nominees/{nomineeId} {
+      allow read: if true;
+      
+      function ownsAwardForNominee(awardId) {
+        return isAuthenticated() && get(/databases/$(database)/documents/awards/$(awardId)).data.ownerId == request.auth.uid;
+      }
+
+      allow create: if true; // Allow public nominations
+      
+      function isVoteIncrement() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['voteCount']) &&
+               request.resource.data.voteCount == resource.data.voteCount + 1;
+      }
+      
+      allow update: if ownsAwardForNominee(resource.data.awardId) || isVoteIncrement() || isAdmin();
+      allow delete: if ownsAwardForNominee(resource.data.awardId) || isAdmin();
+    }
+
+    match /votes/{voteId} {
+      allow read: if true;
+      allow create: if true; // Allow public voting (we'll handle email uniqueness via ID or cloud function logic, but for client side we allow create)
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /leads/{leadId} {
+      allow read: if isAuthenticated() && get(/databases/$(database)/documents/awards/$(resource.data.awardId)).data.ownerId == request.auth.uid;
+      allow create: if true; // Allow public lead capture during voting/nomination
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

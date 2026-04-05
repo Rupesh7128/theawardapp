@@ -1,0 +1,121 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "An admin user who creates and manages awards.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "companyName": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "superadmin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "Award": {
+      "title": "Award",
+      "description": "An award campaign created by a user.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "nominationEndDate": { "type": "string", "format": "date-time" },
+        "votingStartDate": { "type": "string", "format": "date-time" },
+        "votingEndDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["draft", "published", "archived"] },
+        "isPublicDirectory": { "type": "boolean" },
+        "customDomain": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "name", "status", "createdAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A category within an award.",
+      "type": "object",
+      "properties": {
+        "awardId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["awardId", "name", "createdAt"]
+    },
+    "Nominee": {
+      "title": "Nominee",
+      "description": "A nominee in a specific category.",
+      "type": "object",
+      "properties": {
+        "awardId": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "description": { "type": "string" },
+        "website": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "aiSummary": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "voteCount": { "type": "number" },
+        "submittedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["awardId", "categoryId", "name", "email", "status", "voteCount", "createdAt"]
+    },
+    "Vote": {
+      "title": "Vote",
+      "description": "A vote cast by a user for a nominee.",
+      "type": "object",
+      "properties": {
+        "awardId": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "nomineeId": { "type": "string" },
+        "voterEmail": { "type": "string", "format": "email" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["awardId", "categoryId", "nomineeId", "voterEmail", "createdAt"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "A lead captured during voting or nomination.",
+      "type": "object",
+      "properties": {
+        "awardId": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "source": { "type": "string", "enum": ["vote", "nomination"] },
+        "categoryId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["awardId", "email", "source", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Admin users."
+    },
+    "/awards/{awardId}": {
+      "schema": { "$ref": "#/entities/Award" },
+      "description": "Award campaigns."
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Award categories."
+    },
+    "/nominees/{nomineeId}": {
+      "schema": { "$ref": "#/entities/Nominee" },
+      "description": "Nominees for awards."
+    },
+    "/votes/{voteId}": {
+      "schema": { "$ref": "#/entities/Vote" },
+      "description": "Votes cast by users. ID should be voterUid_categoryId to enforce one vote per category."
+    },
+    "/leads/{leadId}": {
+      "schema": { "$ref": "#/entities/Lead" },
+      "description": "Leads captured from voters and nominators."
+    }
+  }
+}
