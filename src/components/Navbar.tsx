@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut, LayoutDashboard, Shield } from 'lucide-react';
+import BrandMark from './BrandMark';
 
 export default function Navbar() {
   const { user, role, signIn, logOut } = useAuth();
@@ -10,16 +11,14 @@ export default function Navbar() {
   const isPublicPage = !user && (location.pathname === '/' || location.pathname.startsWith('/use-cases/'));
 
   return (
-    <nav className={`sticky z-50 ${isPublicPage ? 'top-3 px-4 sm:px-6' : 'top-0 bg-white/95 backdrop-blur border-b border-[#EAEAEA]'}`}>
+    <nav className={`sticky z-50 ${isPublicPage ? 'top-0 px-4 pt-3 sm:px-6' : 'top-0 bg-white/95 backdrop-blur border-b border-[#EAEAEA]'}`}>
       <div
         className={`mx-auto px-4 sm:px-6 lg:px-8 ${isPublicPage ? 'max-w-5xl rounded-2xl border border-[#EAEAEA] bg-white/78 backdrop-blur-xl shadow-[0_12px_40px_rgba(17,17,17,0.06)]' : 'max-w-7xl'}`}
       >
         <div className={`flex justify-between items-center ${isPublicPage ? 'h-14' : 'h-16'}`}>
           {/* Logo */}
           <Link to="/" className="flex-shrink-0 flex items-center gap-2.5">
-            <span className={`${isPublicPage ? 'text-lg' : 'text-xl'} font-bold tracking-tight text-[#111111]`}>
-              theawards<span style={{ color: '#C8860A' }}>app</span>
-            </span>
+            <BrandMark compact={isPublicPage} />
           </Link>
 
           {/* Nav links (only on landing / public pages) */}

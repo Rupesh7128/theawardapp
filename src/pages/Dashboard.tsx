@@ -84,17 +84,17 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {/* Create New Card */}
-        <div className="bg-white overflow-hidden shadow-sm rounded-xl border border-dashed border-[#EAEAEA] hover:border-[#111111] transition-colors">
+        <div className="overflow-hidden rounded-[24px] border border-[#EAEAEA] bg-[#111111] shadow-sm transition-transform hover:-translate-y-0.5">
           <div className="px-6 py-8 h-full flex flex-col justify-center items-center text-center">
             <div className="w-full flex flex-col items-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#FAFAFA] border border-[#EAEAEA] mb-4">
-                <Plus className="h-5 w-5 text-[#111111]" />
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/10">
+                <Plus className="h-5 w-5 text-white" />
               </div>
-              <h3 className="text-lg font-semibold text-[#111111] mb-2">New Campaign</h3>
-              <p className="text-sm text-[#666666] mb-6">Create a new award campaign with AI assistance.</p>
+              <h3 className="mb-2 text-lg font-semibold text-white">New Campaign</h3>
+              <p className="mb-6 max-w-xs text-sm text-[#B3B3B3]">Create a new award campaign with an AI-guided flow that feels closer to a conversation than a form.</p>
               <Link
                 to="/dashboard/create"
-                className="inline-flex items-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#111111] transition-colors"
+                className="inline-flex items-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#111111] shadow-sm transition-colors hover:bg-[#FAFAFA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 Create Campaign
               </Link>

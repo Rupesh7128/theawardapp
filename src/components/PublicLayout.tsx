@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import BrandMark from './BrandMark';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -62,8 +63,9 @@ export default function PublicLayout({ children, award }: PublicLayoutProps) {
               </a>
             )}
             <span className="text-[#EAEAEA]">|</span>
-            <a href="/" className="hover:text-[#111111] font-medium flex items-center gap-1">
-              Powered by <span className="text-[#111111] font-semibold">theawardsapp</span>
+            <a href="/" className="hover:text-[#111111] font-medium flex items-center gap-2">
+              <span>Powered by</span>
+              <BrandMark compact />
             </a>
           </div>
         </div>
