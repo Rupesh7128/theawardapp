@@ -1,9 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { db, storage } from '../lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { addDoc, collection } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,21 +11,29 @@ import {
   Sparkles,
   Target,
   Upload,
-  Wand2
+  Wand2,
+  X
 } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
+import { useAuth } from '../contexts/AuthContext';
+import { db, storage } from '../lib/firebase';
 
 type Category = {
   name: string;
   description: string;
 };
 
-const steps = [
-  { id: 1, label: 'Brief', title: 'Describe the campaign you want to launch' },
-  { id: 2, label: 'Timeline', title: 'Choose when nominations and voting should happen' },
-  { id: 3, label: 'Categories', title: 'Shape the categories people will vote for' },
-  { id: 4, label: 'Launch', title: 'Your campaign is ready to publish' },
-];
+type QuestionId =
+  | 'brief'
+  | 'name'
+  | 'description'
+  | 'landing'
+  | 'logo'
+  | 'nomination'
+  | 'votingStart'
+  | 'votingEnd'
+  | 'categories'
+  | 'review';
 
 const quickBriefs = [
   'Launch a SaaS awards campaign for B2B founders and operators',
@@ -35,10 +41,81 @@ const quickBriefs = [
   'Build a marketing awards campaign for agencies and in-house growth teams',
 ];
 
+const questions: Array<{
+  id: QuestionId;
+  eyebrow: string;
+  title: string;
+  helper: string;
+  optional?: boolean;
+}> = [
+  {
+    id: 'brief',
+    eyebrow: 'Campaign Brief',
+    title: 'What kind of award campaign do you want to create?',
+    helper: 'Start with a short prompt. AI can turn it into a polished campaign draft.'
+  },
+  {
+    id: 'name',
+    eyebrow: 'Campaign Name',
+    title: 'What should this campaign be called?',
+    helper: 'Use a short name that looks strong on landing pages, share cards, and emails.'
+  },
+  {
+    id: 'description',
+    eyebrow: 'Campaign Story',
+    title: 'How would you describe this campaign to nominees and voters?',
+    helper: 'Keep it sharp and persuasive so people instantly understand why it matters.'
+  },
+  {
+    id: 'landing',
+    eyebrow: 'Landing Page',
+    title: 'Do you want to attach a landing page URL?',
+    helper: 'This is optional. Add a website if you already have a home for the campaign.',
+    optional: true
+  },
+  {
+    id: 'logo',
+    eyebrow: 'Branding',
+    title: 'Do you want to upload a logo for the campaign?',
+    helper: 'This is optional. A logo makes the campaign feel polished when people share it.',
+    optional: true
+  },
+  {
+    id: 'nomination',
+    eyebrow: 'Timeline',
+    title: 'When should nominations open?',
+    helper: 'Choose the date when people can start submitting entries.'
+  },
+  {
+    id: 'votingStart',
+    eyebrow: 'Timeline',
+    title: 'When should voting start?',
+    helper: 'Choose the day when your shortlist goes live and public voting begins.'
+  },
+  {
+    id: 'votingEnd',
+    eyebrow: 'Timeline',
+    title: 'When should voting end?',
+    helper: 'Set the closing date so your campaign has a clear finish line.'
+  },
+  {
+    id: 'categories',
+    eyebrow: 'Categories',
+    title: 'What award categories should people vote on?',
+    helper: 'Generate them with AI or add your own. You need at least one category to publish.'
+  },
+  {
+    id: 'review',
+    eyebrow: 'Review',
+    title: 'Ready to publish this campaign?',
+    helper: 'Review the summary, then publish when everything looks right.'
+  }
+];
+
 export default function CreateAwardWizard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const [questionIndex, setQuestionIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [awardId, setAwardId] = useState<string | null>(null);
   const [campaignBrief, setCampaignBrief] = useState('');
@@ -63,20 +140,59 @@ export default function CreateAwardWizard() {
     return new GoogleGenAI({ apiKey: geminiApiKey });
   }, [geminiApiKey]);
 
-  const canContinueFromStepOne = Boolean(name.trim() && description.trim());
-  const canContinueFromStepTwo = Boolean(nominationOpenDate && votingStartDate && votingEndDate);
+  const currentQuestion = questions[questionIndex];
+  const totalQuestions = questions.length;
   const canPublish = Boolean(name.trim() && description.trim() && categories.length > 0);
 
-  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      setLogoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  const isCurrentQuestionComplete = () => {
+    switch (currentQuestion.id) {
+      case 'brief':
+        return Boolean(campaignBrief.trim());
+      case 'name':
+        return Boolean(name.trim());
+      case 'description':
+        return Boolean(description.trim());
+      case 'landing':
+      case 'logo':
+        return true;
+      case 'nomination':
+        return Boolean(nominationOpenDate);
+      case 'votingStart':
+        return Boolean(votingStartDate);
+      case 'votingEnd':
+        return Boolean(votingEndDate);
+      case 'categories':
+        return categories.length > 0;
+      case 'review':
+        return canPublish;
+      default:
+        return false;
     }
+  };
+
+  const goNext = () => {
+    if (!isCurrentQuestionComplete()) return;
+    setQuestionIndex((current: number) => Math.min(current + 1, totalQuestions - 1));
+  };
+
+  const goBack = () => {
+    setQuestionIndex((current: number) => Math.max(current - 1, 0));
+  };
+
+  const skipCurrentQuestion = () => {
+    if (!currentQuestion.optional) return;
+    goNext();
+  };
+
+  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files?.[0]) return;
+    const file = event.target.files[0];
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const generateCampaignDraft = async () => {
@@ -111,6 +227,7 @@ export default function CreateAwardWizard() {
           }))
         );
       }
+      setQuestionIndex(1);
     } catch (error) {
       console.error('Error generating campaign draft:', error);
       alert('Failed to generate an AI draft.');
@@ -120,10 +237,11 @@ export default function CreateAwardWizard() {
   };
 
   const generateCategories = async () => {
-    if (!name || !description) {
+    if (!name.trim() || !description.trim()) {
       alert('Please add the campaign name and description first.');
       return;
     }
+
     if (!ai) {
       alert('AI is not configured. Set VITE_GEMINI_API_KEY in a local .env file to enable category generation.');
       return;
@@ -140,7 +258,12 @@ export default function CreateAwardWizard() {
       });
 
       const generated = JSON.parse(response.text);
-      setCategories(generated);
+      setCategories(
+        generated.map((entry: Category) => ({
+          name: entry.name,
+          description: entry.description,
+        }))
+      );
     } catch (error) {
       console.error('Error generating categories:', error);
       alert('Failed to generate categories.');
@@ -152,7 +275,7 @@ export default function CreateAwardWizard() {
   const handleCreateAndPublish = async () => {
     if (!user) return;
     if (!canPublish) {
-      alert('Please add at least one category before publishing.');
+      alert('Please complete the campaign details and add at least one category before publishing.');
       return;
     }
 
@@ -190,7 +313,6 @@ export default function CreateAwardWizard() {
       }
 
       setAwardId(awardRef.id);
-      setStep(4);
     } catch (error) {
       console.error('Error creating campaign:', error);
       alert('Failed to create campaign.');
@@ -199,430 +321,443 @@ export default function CreateAwardWizard() {
     }
   };
 
-  const currentStep = steps.find((entry) => entry.id === step) ?? steps[0];
+  const renderQuestionContent = () => {
+    switch (currentQuestion.id) {
+      case 'brief':
+        return (
+          <div className="space-y-8">
+            <div className="rounded-[28px] border border-[#E9E9E7] bg-[#FAFAF8] p-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#E5E5E3] bg-white px-3 py-1 text-xs font-medium text-[#666666]">
+                <Wand2 className="h-3.5 w-3.5 text-[#C8860A]" />
+                Start with a prompt
+              </div>
+              <textarea
+                autoFocus
+                value={campaignBrief}
+                onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setCampaignBrief(event.target.value)}
+                rows={5}
+                placeholder="Launch a premium awards campaign for top B2B SaaS products. We want founders, operators, and investors to nominate tools, drive sharing, and capture qualified leads."
+                className="mt-5 w-full resize-none border-0 bg-transparent p-0 text-3xl font-medium leading-[1.45] tracking-tight text-[#111111] outline-none placeholder:text-[#B8B8B4]"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {quickBriefs.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => setCampaignBrief(prompt)}
+                  className="rounded-full border border-[#E6E6E3] bg-white px-4 py-2 text-sm text-[#5D5D5A] transition-colors hover:border-[#111111] hover:text-[#111111]"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={generateCampaignDraft}
+                disabled={isGeneratingDraft}
+                className="inline-flex items-center gap-2 rounded-2xl bg-[#111111] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-60"
+              >
+                <Sparkles className="h-4 w-4 text-[#C8860A]" />
+                {isGeneratingDraft ? 'Generating with AI...' : 'Generate with AI'}
+              </button>
+              <button
+                type="button"
+                onClick={goNext}
+                disabled={!campaignBrief.trim()}
+                className="inline-flex items-center gap-2 rounded-2xl border border-[#E5E5E3] bg-white px-5 py-3 text-sm font-semibold text-[#111111] transition-colors hover:border-[#111111] disabled:opacity-50"
+              >
+                Continue manually
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        );
+      case 'name':
+        return (
+          <input
+            autoFocus
+            type="text"
+            value={name}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => setName(event.target.value)}
+            placeholder="SaaS Excellence Awards 2026"
+            className="w-full border-0 bg-transparent p-0 text-5xl font-semibold tracking-tight text-[#111111] outline-none placeholder:text-[#C0C0BB]"
+          />
+        );
+      case 'description':
+        return (
+          <textarea
+            autoFocus
+            value={description}
+            onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(event.target.value)}
+            rows={5}
+            placeholder="Recognizing the most trusted and innovative B2B SaaS products chosen by founders, operators, and investors."
+            className="w-full resize-none border-0 bg-transparent p-0 text-3xl font-medium leading-[1.5] tracking-tight text-[#111111] outline-none placeholder:text-[#C0C0BB]"
+          />
+        );
+      case 'landing':
+        return (
+          <div className="rounded-[28px] border border-[#E9E9E7] bg-[#FAFAF8] p-6">
+            <div className="relative">
+              <Globe className="pointer-events-none absolute left-0 top-1/2 h-5 w-5 -translate-y-1/2 text-[#888884]" />
+              <input
+                autoFocus
+                type="url"
+                value={landingPageUrl}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setLandingPageUrl(event.target.value)}
+                placeholder="https://www.theawardsapp.com"
+                className="w-full border-0 bg-transparent py-1 pl-9 pr-0 text-3xl font-medium tracking-tight text-[#111111] outline-none placeholder:text-[#C0C0BB]"
+              />
+            </div>
+          </div>
+        );
+      case 'logo':
+        return (
+          <div className="rounded-[28px] border border-dashed border-[#DADAD5] bg-[#FAFAF8] p-8 text-center">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl border border-[#E2E2DE] bg-white">
+              {logoPreview ? (
+                <img src={logoPreview} alt="Logo preview" className="h-16 w-16 rounded-2xl object-cover" />
+              ) : (
+                <Upload className="h-8 w-8 text-[#666666]" />
+              )}
+            </div>
+            <p className="mt-6 text-2xl font-semibold tracking-tight text-[#111111]">
+              {logoPreview ? 'Logo uploaded' : 'Upload a campaign logo'}
+            </p>
+            <p className="mt-3 text-base leading-7 text-[#666666]">
+              Add a visual identity now, or skip and upload it later from the dashboard.
+            </p>
+            <label className="mt-8 inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-[#111111] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-black">
+              <Upload className="h-4 w-4" />
+              {logoPreview ? 'Replace logo' : 'Choose file'}
+              <input type="file" className="sr-only" accept="image/*" onChange={handleLogoChange} />
+            </label>
+          </div>
+        );
+      case 'nomination':
+      case 'votingStart':
+      case 'votingEnd': {
+        const value =
+          currentQuestion.id === 'nomination'
+            ? nominationOpenDate
+            : currentQuestion.id === 'votingStart'
+              ? votingStartDate
+              : votingEndDate;
+        const setValue =
+          currentQuestion.id === 'nomination'
+            ? setNominationOpenDate
+            : currentQuestion.id === 'votingStart'
+              ? setVotingStartDate
+              : setVotingEndDate;
+
+        return (
+          <div className="max-w-xl">
+            <div className="rounded-[28px] border border-[#E9E9E7] bg-[#FAFAF8] p-6">
+              <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-[#E2E2DE] bg-white">
+                <CalendarDays className="h-5 w-5 text-[#111111]" />
+              </div>
+              <input
+                autoFocus
+                type="date"
+                value={value}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setValue(event.target.value)}
+                className="w-full rounded-2xl border border-[#E2E2DE] bg-white px-5 py-4 text-xl text-[#111111] outline-none transition-colors focus:border-[#111111]"
+              />
+            </div>
+          </div>
+        );
+      }
+      case 'categories':
+        return (
+          <div className="space-y-5">
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={generateCategories}
+                disabled={isGeneratingCategories}
+                className="inline-flex items-center gap-2 rounded-2xl bg-[#111111] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-60"
+              >
+                <Sparkles className="h-4 w-4 text-[#C8860A]" />
+                {isGeneratingCategories ? 'Generating categories...' : 'Generate with AI'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCategories([...categories, { name: 'New Category', description: 'Describe why this category matters.' }])}
+                className="inline-flex items-center gap-2 rounded-2xl border border-[#E5E5E3] bg-white px-5 py-3 text-sm font-semibold text-[#111111] transition-colors hover:border-[#111111]"
+              >
+                <Target className="h-4 w-4" />
+                Add manually
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {categories.length === 0 && (
+                <div className="rounded-[28px] border border-dashed border-[#DADAD5] bg-[#FAFAF8] px-6 py-10 text-center">
+                  <p className="text-lg font-semibold text-[#111111]">No categories yet</p>
+                  <p className="mt-2 text-sm text-[#666666]">Generate the first set with AI or add one manually.</p>
+                </div>
+              )}
+
+              {categories.map((category: Category, index: number) => (
+                <div key={`${category.name}-${index}`} className="rounded-[28px] border border-[#E9E9E7] bg-[#FAFAF8] p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 space-y-3">
+                      <input
+                        type="text"
+                        value={category.name}
+                        onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                          const next = [...categories];
+                          next[index].name = event.target.value;
+                          setCategories(next);
+                        }}
+                        className="w-full border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight text-[#111111] outline-none"
+                      />
+                      <textarea
+                        value={category.description}
+                        onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => {
+                          const next = [...categories];
+                          next[index].description = event.target.value;
+                          setCategories(next);
+                        }}
+                        rows={2}
+                        className="w-full resize-none border-0 bg-transparent p-0 text-base leading-7 text-[#666666] outline-none"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCategories(categories.filter((_: Category, categoryIndex: number) => categoryIndex !== index))}
+                      className="rounded-xl border border-[#E1E1DD] px-3 py-2 text-sm font-medium text-[#666666] transition-colors hover:border-[#111111] hover:text-[#111111]"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case 'review':
+        return (
+          <div className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-[28px] border border-[#E9E9E7] bg-[#FAFAF8] p-5">
+                <p className="text-xs uppercase tracking-[0.24em] text-[#999999]">Campaign</p>
+                <p className="mt-3 text-2xl font-semibold tracking-tight text-[#111111]">{name || 'Untitled campaign'}</p>
+                <p className="mt-3 text-base leading-7 text-[#666666]">
+                  {description || 'Add a description so nominees and voters understand the value of this campaign.'}
+                </p>
+              </div>
+              <div className="rounded-[28px] border border-[#E9E9E7] bg-[#FAFAF8] p-5">
+                <p className="text-xs uppercase tracking-[0.24em] text-[#999999]">Timeline</p>
+                <div className="mt-3 space-y-2 text-sm text-[#111111]">
+                  <p>Nomination opens: {nominationOpenDate || 'Not set'}</p>
+                  <p>Voting starts: {votingStartDate || 'Not set'}</p>
+                  <p>Voting ends: {votingEndDate || 'Not set'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-[#E9E9E7] bg-[#FAFAF8] p-5">
+              <p className="text-xs uppercase tracking-[0.24em] text-[#999999]">Categories</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {categories.map((category: Category) => (
+                  <div key={category.name} className="rounded-full border border-[#E1E1DD] bg-white px-4 py-2 text-sm font-medium text-[#111111]">
+                    {category.name}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  if (awardId) {
+    return (
+      <div className="min-h-screen bg-[#F4F2EE] px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+          <div className="w-full max-w-3xl rounded-[32px] border border-white/70 bg-white/90 p-8 text-center shadow-[0_30px_120px_rgba(17,17,17,0.12)] backdrop-blur">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#111111] text-white shadow-[0_24px_80px_rgba(17,17,17,0.18)]">
+              <CheckCircle2 className="h-10 w-10" />
+            </div>
+            <h1 className="mt-8 text-4xl font-bold tracking-tight text-[#111111]">Campaign published</h1>
+            <p className="mt-4 text-lg leading-8 text-[#666666]">
+              Your award campaign is live and ready to collect nominations, votes, and new leads.
+            </p>
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#111111] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-black"
+              >
+                Go to dashboard
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/awards/${awardId}`)}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#E5E5E3] px-6 py-3 text-sm font-semibold text-[#111111] transition-colors hover:bg-[#FAFAF8]"
+              >
+                Open campaign
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="rounded-[28px] border border-[#EAEAEA] bg-white shadow-[0_24px_80px_rgba(17,17,17,0.06)] overflow-hidden">
-          <div className="grid lg:grid-cols-[280px_1fr]">
-            <aside className="border-b border-[#EAEAEA] bg-[#111111] px-6 py-8 text-white lg:border-b-0 lg:border-r lg:border-r-white/10">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-[#D6D6D6]">
-                <Sparkles className="h-3.5 w-3.5 text-[#C8860A]" />
-                AI-powered campaign builder
-              </div>
-              <h1 className="mt-6 text-3xl font-bold tracking-tight">New Campaign</h1>
-              <p className="mt-3 text-sm leading-6 text-[#999999]">
-                Build your campaign in a guided flow that feels closer to a conversation than a form.
-              </p>
-              <div className="mt-8 space-y-3">
-                {steps.map((entry) => {
-                  const isActive = step === entry.id;
-                  const isDone = step > entry.id;
+    <div className="min-h-screen overflow-hidden bg-[#F4F2EE] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="rounded-[32px] border border-white/60 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.9),_rgba(249,247,242,0.78))] p-6 shadow-[0_32px_120px_rgba(17,17,17,0.12)] backdrop-blur sm:p-8">
+          <div className="mb-8 flex items-center justify-between">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#E5E5E3] bg-white px-3 py-1 text-xs font-medium text-[#666666]">
+              <Sparkles className="h-3.5 w-3.5 text-[#C8860A]" />
+              AI-powered campaign builder
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E5E5E3] bg-white text-[#111111] transition-colors hover:bg-[#FAFAF8]"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
 
-                  return (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      onClick={() => {
-                        if (entry.id < 4 || awardId) setStep(entry.id);
-                      }}
-                      className={`w-full rounded-2xl border px-4 py-4 text-left transition-colors ${
-                        isActive
-                          ? 'border-white/15 bg-white text-[#111111]'
-                          : isDone
-                            ? 'border-white/10 bg-white/10 text-white'
-                            : 'border-white/10 bg-transparent text-[#D6D6D6] hover:bg-white/5'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${isActive ? 'bg-[#111111] text-white' : isDone ? 'bg-[#C8860A] text-[#111111]' : 'bg-white/10 text-white'}`}>
-                          {isDone ? '✓' : entry.id}
-                        </span>
-                        <div>
-                          <p className={`text-xs uppercase tracking-[0.2em] ${isActive ? 'text-[#666666]' : 'text-[#999999]'}`}>{entry.label}</p>
-                          <p className={`mt-1 text-sm font-medium ${isActive ? 'text-[#111111]' : 'text-white'}`}>{entry.title}</p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-[#999999]">Live preview</p>
-                <div className="mt-4 rounded-2xl border border-white/10 bg-[#0B0B0B] p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-lg font-semibold text-white">{name || 'Your campaign title'}</p>
-                      <p className="mt-2 text-sm leading-6 text-[#999999]">
-                        {description || 'Your AI-generated campaign summary will appear here as you build.'}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                      {logoPreview ? (
-                        <img src={logoPreview} alt="Campaign logo preview" className="h-10 w-10 rounded-lg object-cover" />
-                      ) : (
-                        <Target className="h-5 w-5 text-[#C8860A]" />
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-5 space-y-2">
-                    {categories.slice(0, 3).map((category: Category) => (
-                      <div key={category.name} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#D6D6D6]">
-                        {category.name}
-                      </div>
-                    ))}
-                    {categories.length === 0 && (
-                      <div className="rounded-xl border border-dashed border-white/10 px-3 py-2 text-sm text-[#777777]">
-                        Categories will appear here after AI suggests them.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </aside>
-
-            <section className="px-6 py-8 sm:px-8 lg:px-12 lg:py-12">
-              <div className="flex items-center justify-between gap-4 border-b border-[#EAEAEA] pb-6">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#999999]">{currentStep.label}</p>
-                  <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#111111]">{currentStep.title}</h2>
-                </div>
-                <div className="hidden sm:flex items-center gap-2 rounded-full border border-[#EAEAEA] bg-[#FAFAFA] px-3 py-2 text-xs text-[#666666]">
-                  <span>Step {step}</span>
-                  <span className="text-[#D0D0D0]">/</span>
-                  <span>{steps.length}</span>
-                </div>
+          <div className="grid gap-6 xl:grid-cols-[1.3fr_360px]">
+            <div className="rounded-[32px] border border-white/70 bg-white/92 p-6 shadow-[0_24px_100px_rgba(17,17,17,0.08)] sm:p-8 md:p-10">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="rounded-full bg-[#F4F2EE] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[#777777]">
+                  {currentQuestion.eyebrow}
+                </span>
+                <span className="rounded-full border border-[#E5E5E3] bg-white px-3 py-1 text-xs font-medium text-[#777777]">
+                  Question {questionIndex + 1} of {totalQuestions}
+                </span>
               </div>
 
-              {step === 1 && (
-                <div className="mt-8 space-y-8">
-                  <div className="rounded-[24px] border border-[#EAEAEA] bg-[#FAFAFA] p-6 sm:p-8">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-medium text-[#666666] border border-[#EAEAEA]">
-                        <Wand2 className="h-3.5 w-3.5 text-[#C8860A]" />
-                        Start with a short brief
-                      </span>
-                    </div>
-                    <textarea
-                      value={campaignBrief}
-                      onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setCampaignBrief(event.target.value)}
-                      rows={5}
-                      placeholder="Example: Launch a premium awards campaign for top B2B SaaS products. We want founders, operators, and investors to nominate tools, capture leads, and drive social sharing."
-                      className="mt-5 w-full resize-none border-0 bg-transparent p-0 text-2xl font-medium leading-10 tracking-tight text-[#111111] outline-none placeholder:text-[#B3B3B3]"
-                    />
-                    <div className="mt-6 flex flex-wrap gap-3">
-                      {quickBriefs.map((prompt) => (
-                        <button
-                          key={prompt}
-                          type="button"
-                          onClick={() => setCampaignBrief(prompt)}
-                          className="rounded-full border border-[#EAEAEA] bg-white px-4 py-2 text-sm text-[#666666] transition-colors hover:border-[#111111] hover:text-[#111111]"
-                        >
-                          {prompt}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={generateCampaignDraft}
-                        disabled={isGeneratingDraft}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#111111] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-60"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        {isGeneratingDraft ? 'Generating draft...' : 'Generate with AI'}
-                      </button>
-                      <div className="inline-flex items-center rounded-xl border border-[#EAEAEA] bg-white px-4 py-3 text-sm text-[#666666]">
-                        {ai ? 'AI is connected and ready to draft your campaign.' : 'AI is optional. You can still build everything manually.'}
-                      </div>
-                    </div>
-                  </div>
+              <div className="mt-8 h-1.5 overflow-hidden rounded-full bg-[#ECEAE5]">
+                <div
+                  className="h-full rounded-full bg-[#111111] transition-all duration-300"
+                  style={{ width: `${((questionIndex + 1) / totalQuestions) * 100}%` }}
+                />
+              </div>
 
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    <div className="space-y-5">
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-[#111111]">Campaign name</label>
-                        <input
-                          type="text"
-                          value={name}
-                          onChange={(event: React.ChangeEvent<HTMLInputElement>) => setName(event.target.value)}
-                          className="w-full rounded-2xl border border-[#EAEAEA] px-4 py-4 text-lg text-[#111111] outline-none transition-colors focus:border-[#111111]"
-                          placeholder="SaaS Excellence Awards 2026"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-[#111111]">Campaign description</label>
-                        <textarea
-                          value={description}
-                          onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(event.target.value)}
-                          rows={4}
-                          className="w-full rounded-2xl border border-[#EAEAEA] px-4 py-4 text-base text-[#111111] outline-none transition-colors focus:border-[#111111]"
-                          placeholder="Tell nominees and voters why this campaign exists."
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-[#111111]">Landing page URL</label>
-                        <div className="relative">
-                          <Globe className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#999999]" />
-                          <input
-                            type="url"
-                            value={landingPageUrl}
-                            onChange={(event: React.ChangeEvent<HTMLInputElement>) => setLandingPageUrl(event.target.value)}
-                            className="w-full rounded-2xl border border-[#EAEAEA] py-4 pl-11 pr-4 text-base text-[#111111] outline-none transition-colors focus:border-[#111111]"
-                            placeholder="https://www.theawardsapp.com"
-                          />
-                        </div>
-                      </div>
-                    </div>
+              <div className="mt-10 min-h-[420px]">
+                <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-[#111111] sm:text-5xl">
+                  {currentQuestion.title}
+                </h1>
+                <p className="mt-4 max-w-2xl text-lg leading-8 text-[#666666]">{currentQuestion.helper}</p>
 
-                    <div className="rounded-[24px] border border-dashed border-[#EAEAEA] bg-[#FCFCFC] p-6">
-                      <label className="block text-sm font-medium text-[#111111]">Campaign logo</label>
-                      <div className="mt-5 flex min-h-[280px] flex-col items-center justify-center rounded-[24px] border border-dashed border-[#EAEAEA] bg-white px-6 py-10 text-center">
-                        {logoPreview ? (
-                          <img src={logoPreview} alt="Logo preview" className="mb-5 h-24 w-24 rounded-2xl object-cover shadow-sm" />
-                        ) : (
-                          <div className="mb-5 rounded-2xl border border-[#EAEAEA] bg-[#FAFAFA] p-5">
-                            <Upload className="h-8 w-8 text-[#666666]" />
-                          </div>
-                        )}
-                        <p className="text-lg font-semibold text-[#111111]">
-                          {logoPreview ? 'Logo ready to go' : 'Drop in your logo'}
-                        </p>
-                        <p className="mt-2 max-w-sm text-sm leading-6 text-[#666666]">
-                          Add a brand mark so your public campaign page feels polished from the first share.
-                        </p>
-                        <label className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#EAEAEA] bg-white px-4 py-3 text-sm font-medium text-[#111111] transition-colors hover:border-[#111111]">
-                          <Upload className="h-4 w-4" />
-                          {logoPreview ? 'Replace logo' : 'Upload logo'}
-                          <input type="file" className="sr-only" accept="image/*" onChange={handleLogoChange} />
-                        </label>
-                      </div>
-                    </div>
-                  </div>
+                <div className="mt-12">{renderQuestionContent()}</div>
+              </div>
 
-                  <div className="flex justify-end">
+              <div className="mt-10 flex flex-col gap-3 border-t border-[#ECEAE5] pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    disabled={questionIndex === 0}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-[#E5E5E3] bg-white px-5 py-3 text-sm font-semibold text-[#111111] transition-colors hover:bg-[#FAFAF8] disabled:opacity-40"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back
+                  </button>
+                  {currentQuestion.optional && (
                     <button
                       type="button"
-                      onClick={() => setStep(2)}
-                      disabled={!canContinueFromStepOne}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#111111] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50"
+                      onClick={skipCurrentQuestion}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-[#777777] transition-colors hover:text-[#111111]"
                     >
-                      Continue to timeline
-                      <ArrowRight className="h-4 w-4" />
+                      Skip
                     </button>
-                  </div>
+                  )}
                 </div>
-              )}
 
-              {step === 2 && (
-                <div className="mt-8 space-y-8">
-                  <div className="grid gap-5 md:grid-cols-3">
-                    {[
-                      {
-                        label: 'Nomination opens',
-                        value: nominationOpenDate,
-                        setValue: setNominationOpenDate,
-                      },
-                      {
-                        label: 'Voting starts',
-                        value: votingStartDate,
-                        setValue: setVotingStartDate,
-                      },
-                      {
-                        label: 'Voting ends',
-                        value: votingEndDate,
-                        setValue: setVotingEndDate,
-                      },
-                    ].map((entry) => (
-                      <div key={entry.label} className="rounded-[24px] border border-[#EAEAEA] bg-[#FAFAFA] p-5">
-                        <div className="flex items-center gap-3">
-                          <div className="rounded-xl border border-[#EAEAEA] bg-white p-3">
-                            <CalendarDays className="h-5 w-5 text-[#111111]" />
-                          </div>
-                          <p className="text-sm font-medium text-[#111111]">{entry.label}</p>
-                        </div>
-                        <input
-                          type="date"
-                          value={entry.value}
-                          onChange={(event: React.ChangeEvent<HTMLInputElement>) => entry.setValue(event.target.value)}
-                          className="mt-5 w-full rounded-2xl border border-[#EAEAEA] bg-white px-4 py-4 text-base text-[#111111] outline-none transition-colors focus:border-[#111111]"
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="rounded-[24px] border border-[#EAEAEA] bg-white p-6">
-                    <p className="text-sm font-medium text-[#111111]">How this flow feels to voters and nominees</p>
-                    <div className="mt-5 grid gap-4 md:grid-cols-3">
-                      <div className="rounded-2xl border border-[#EAEAEA] bg-[#FAFAFA] p-4">
-                        <p className="text-xs uppercase tracking-[0.2em] text-[#999999]">Phase 1</p>
-                        <p className="mt-2 text-base font-semibold text-[#111111]">Nominations open</p>
-                        <p className="mt-2 text-sm leading-6 text-[#666666]">Drive inbound submissions and start building your audience list.</p>
-                      </div>
-                      <div className="rounded-2xl border border-[#EAEAEA] bg-[#FAFAFA] p-4">
-                        <p className="text-xs uppercase tracking-[0.2em] text-[#999999]">Phase 2</p>
-                        <p className="mt-2 text-base font-semibold text-[#111111]">Voting begins</p>
-                        <p className="mt-2 text-sm leading-6 text-[#666666]">Turn nominations into sharing loops and qualified traffic.</p>
-                      </div>
-                      <div className="rounded-2xl border border-[#EAEAEA] bg-[#FAFAFA] p-4">
-                        <p className="text-xs uppercase tracking-[0.2em] text-[#999999]">Phase 3</p>
-                        <p className="mt-2 text-base font-semibold text-[#111111]">Campaign closes</p>
-                        <p className="mt-2 text-sm leading-6 text-[#666666]">Use your dashboard to convert winners, nominees, and voters into leads.</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#EAEAEA] px-6 py-3 text-sm font-semibold text-[#111111] transition-colors hover:bg-[#FAFAFA]"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                      Back
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStep(3)}
-                      disabled={!canContinueFromStepTwo}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#111111] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50"
-                    >
-                      Continue to categories
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="mt-8 space-y-8">
-                  <div className="rounded-[24px] border border-[#EAEAEA] bg-[#FAFAFA] p-6">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-[#111111]">AI category suggestions</p>
-                        <p className="mt-1 text-sm text-[#666666]">Generate category ideas from your campaign brief, then edit them inline.</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={generateCategories}
-                        disabled={isGeneratingCategories}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#EAEAEA] bg-white px-4 py-3 text-sm font-semibold text-[#111111] transition-colors hover:border-[#111111] disabled:opacity-60"
-                      >
-                        <Sparkles className="h-4 w-4 text-[#C8860A]" />
-                        {!ai ? 'AI unavailable' : isGeneratingCategories ? 'Generating...' : 'Generate categories'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    {categories.map((category: Category, index: number) => (
-                      <div key={`${category.name}-${index}`} className="rounded-[24px] border border-[#EAEAEA] bg-white p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              value={category.name}
-                              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                                const next = [...categories];
-                                next[index].name = event.target.value;
-                                setCategories(next);
-                              }}
-                              className="w-full border-0 p-0 text-xl font-semibold text-[#111111] outline-none"
-                            />
-                            <textarea
-                              value={category.description}
-                              onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => {
-                                const next = [...categories];
-                                next[index].description = event.target.value;
-                                setCategories(next);
-                              }}
-                              rows={2}
-                              className="mt-3 w-full resize-none border-0 p-0 text-sm leading-6 text-[#666666] outline-none"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setCategories(categories.filter((_: Category, categoryIndex: number) => categoryIndex !== index))}
-                            className="rounded-xl border border-[#EAEAEA] px-3 py-2 text-sm font-medium text-[#666666] transition-colors hover:border-[#111111] hover:text-[#111111]"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-
-                    {categories.length === 0 && (
-                      <div className="rounded-[24px] border border-dashed border-[#EAEAEA] bg-[#FCFCFC] px-6 py-12 text-center">
-                        <p className="text-lg font-semibold text-[#111111]">No categories yet</p>
-                        <p className="mt-2 text-sm text-[#666666]">Use AI to generate the first set or add them manually below.</p>
-                      </div>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => setCategories([...categories, { name: 'New Category', description: 'Describe what makes this category worth winning.' }])}
-                      className="inline-flex items-center gap-2 rounded-xl border border-[#EAEAEA] bg-[#FAFAFA] px-4 py-3 text-sm font-semibold text-[#111111] transition-colors hover:border-[#111111]"
-                    >
-                      <Target className="h-4 w-4" />
-                      Add category manually
-                    </button>
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setStep(2)}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#EAEAEA] px-6 py-3 text-sm font-semibold text-[#111111] transition-colors hover:bg-[#FAFAFA]"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                      Back
-                    </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-sm text-[#8B8B86]">
+                    {currentQuestion.id === 'review'
+                      ? 'Publish this campaign when everything looks right.'
+                      : 'Press continue to move to the next question.'}
+                  </span>
+                  {currentQuestion.id === 'review' ? (
                     <button
                       type="button"
                       onClick={handleCreateAndPublish}
-                      disabled={loading || !canPublish}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#111111] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50"
+                      disabled={!canPublish || loading}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-[#111111] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50"
                     >
-                      {loading ? 'Publishing...' : 'Create & publish'}
-                      <CheckCircle2 className="h-4 w-4" />
+                      {loading ? 'Publishing...' : 'Publish campaign'}
+                      <ArrowRight className="h-4 w-4" />
                     </button>
-                  </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={goNext}
+                      disabled={!isCurrentQuestionComplete()}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-[#111111] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50"
+                    >
+                      Continue
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
+            </div>
 
-              {step === 4 && (
-                <div className="flex min-h-[70vh] items-center justify-center py-8">
-                  <div className="max-w-2xl text-center">
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#111111] text-white">
-                      <CheckCircle2 className="h-10 w-10" />
-                    </div>
-                    <p className="mt-8 text-xs font-medium uppercase tracking-[0.24em] text-[#999999]">Campaign published</p>
-                    <h3 className="mt-3 text-4xl font-bold tracking-tight text-[#111111]">Your campaign is live.</h3>
-                    <p className="mx-auto mt-4 max-w-xl text-lg leading-8 text-[#666666]">
-                      The structure, timeline, and categories are ready. Head to the dashboard to customize the experience and start driving nominations.
+            <aside className="rounded-[32px] border border-[#1A1A1A] bg-[#111111] p-6 text-white shadow-[0_24px_100px_rgba(17,17,17,0.22)]">
+              <p className="text-xs uppercase tracking-[0.24em] text-[#8C8C8C]">Live Preview</p>
+              <div className="mt-6 rounded-[28px] border border-white/10 bg-[#090909] p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-2xl font-semibold tracking-tight text-white">{name || 'Your campaign title'}</p>
+                    <p className="mt-3 text-sm leading-7 text-[#9A9A9A]">
+                      {description || 'Your campaign summary will appear here as you answer each question.'}
                     </p>
-                    <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/dashboard/award/${awardId}`)}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#111111] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-black"
-                      >
-                        Go to dashboard
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/award/${awardId}`)}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#EAEAEA] px-6 py-3 text-sm font-semibold text-[#111111] transition-colors hover:bg-[#FAFAFA]"
-                      >
-                        View public page
-                      </button>
-                    </div>
+                  </div>
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+                    {logoPreview ? (
+                      <img src={logoPreview} alt="Campaign logo preview" className="h-12 w-12 rounded-xl object-cover" />
+                    ) : (
+                      <Target className="h-5 w-5 text-[#C8860A]" />
+                    )}
                   </div>
                 </div>
-              )}
-            </section>
+
+                <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[#8C8C8C]">Timeline</p>
+                  <div className="mt-3 space-y-2 text-sm text-[#E5E5E5]">
+                    <p>Nomination opens: {nominationOpenDate || 'TBD'}</p>
+                    <p>Voting starts: {votingStartDate || 'TBD'}</p>
+                    <p>Voting ends: {votingEndDate || 'TBD'}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[#8C8C8C]">Categories</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {categories.length > 0 ? (
+                      categories.slice(0, 5).map((category: Category) => (
+                        <span key={category.name} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-[#E9E9E9]">
+                          {category.name}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-[#7A7A7A]">Categories appear here after you generate or add them.</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[#8C8C8C]">Landing Page</p>
+                  <p className="mt-3 text-sm text-[#E5E5E5]">{landingPageUrl || 'Not added yet'}</p>
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
       </div>
