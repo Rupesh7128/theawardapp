@@ -1,28 +1,45 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Trophy, LogOut, LayoutDashboard, Shield } from 'lucide-react';
+import { LogOut, LayoutDashboard, Shield } from 'lucide-react';
 
 export default function Navbar() {
   const { user, role, signIn, logOut } = useAuth();
+  const location = useLocation();
+  const isLanding = location.pathname === '/';
+  const isPublicPage = !user && (location.pathname === '/' || location.pathname.startsWith('/use-cases/'));
 
   return (
-    <nav className="bg-white border-b border-[#EAEAEA] sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <Link to="/" className="flex-shrink-0 flex items-center gap-2">
-              <Trophy className="h-6 w-6 text-[#111111]" />
-              <span className="font-bold text-xl tracking-tight text-[#111111]">The Award App</span>
-            </Link>
-          </div>
-          <div className="flex items-center gap-6">
+    <nav className={`sticky z-50 ${isPublicPage ? 'top-3 px-4 sm:px-6' : 'top-0 bg-white/95 backdrop-blur border-b border-[#EAEAEA]'}`}>
+      <div
+        className={`mx-auto px-4 sm:px-6 lg:px-8 ${isPublicPage ? 'max-w-5xl rounded-2xl border border-[#EAEAEA] bg-white/78 backdrop-blur-xl shadow-[0_12px_40px_rgba(17,17,17,0.06)]' : 'max-w-7xl'}`}
+      >
+        <div className={`flex justify-between items-center ${isPublicPage ? 'h-14' : 'h-16'}`}>
+          {/* Logo */}
+          <Link to="/" className="flex-shrink-0 flex items-center gap-2.5">
+            <span className={`${isPublicPage ? 'text-lg' : 'text-xl'} font-bold tracking-tight text-[#111111]`}>
+              Award<span style={{ color: '#C8860A' }}>ly</span>
+            </span>
+          </Link>
+
+          {/* Nav links (only on landing / public pages) */}
+          {!user && isLanding && (
+            <div className="hidden sm:flex items-center gap-6 text-sm font-medium text-[#555555]">
+              <a href="#live-example" className="hover:text-[#111111] transition-colors">Demo</a>
+              <a href="#pricing" className="hover:text-[#111111] transition-colors">Pricing</a>
+              <a href="#footer" className="hover:text-[#111111] transition-colors">Pages</a>
+              <Link to="/use-cases/saas" className="hover:text-[#111111] transition-colors">Use cases</Link>
+            </div>
+          )}
+
+          {/* Right side */}
+          <div className="flex items-center gap-4">
             {user ? (
               <>
                 {role === 'superadmin' && (
                   <Link
                     to="/admin"
-                    className="text-[#666666] hover:text-[#111111] flex items-center gap-2 font-medium text-sm transition-colors"
+                    className="text-[#666666] hover:text-[#111111] flex items-center gap-1.5 font-medium text-sm transition-colors"
                   >
                     <Shield className="h-4 w-4" />
                     Admin
@@ -30,25 +47,25 @@ export default function Navbar() {
                 )}
                 <Link
                   to="/dashboard"
-                  className="text-[#666666] hover:text-[#111111] flex items-center gap-2 font-medium text-sm transition-colors"
+                  className="text-[#666666] hover:text-[#111111] flex items-center gap-1.5 font-medium text-sm transition-colors"
                 >
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
                 </Link>
                 <button
                   onClick={logOut}
-                  className="text-[#666666] hover:text-[#111111] flex items-center gap-2 font-medium text-sm transition-colors"
+                  className="text-[#666666] hover:text-[#111111] flex items-center gap-1.5 font-medium text-sm transition-colors"
                 >
                   <LogOut className="h-4 w-4" />
-                  Sign Out
+                  Sign out
                 </button>
               </>
             ) : (
               <button
                 onClick={signIn}
-                className="bg-[#111111] text-white px-5 py-2 rounded-md text-sm font-medium hover:bg-black transition-colors"
+                className={`border border-[#EAEAEA] text-[#111111] rounded-lg text-sm font-medium transition-colors ${isPublicPage ? 'bg-white/90 px-3.5 py-1.5 hover:bg-white hover:border-[#C8860A]' : 'bg-white px-4 py-1.5 hover:border-[#111111]'}`}
               >
-                Sign In
+                Sign in
               </button>
             )}
           </div>

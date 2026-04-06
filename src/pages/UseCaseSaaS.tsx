@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight, ArrowLeft, Check, Trophy, Users, Zap,
+  ArrowLeft, Check, Trophy, Users, Zap,
   TrendingUp, Target, BarChart2, Share2, Mail
 } from 'lucide-react';
 import WaitlistForm from '../components/WaitlistForm';
@@ -52,20 +52,17 @@ export default function UseCaseSaaS() {
       </div>
 
       {/* Hero */}
-      <section className="py-20 px-6 border-b border-[#EAEAEA] bg-[#FAFAFA]">
-        <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#666666] border border-[#EAEAEA] bg-white px-3 py-1.5 rounded-full mb-6">
-            <Zap className="h-3.5 w-3.5" />
-            For SaaS Founders & Operators
-          </span>
-          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-[#111111] leading-tight">
-            The SaaS Lead Machine.<br />No Ads Required.
+      <section className="py-20 px-6 border-b border-[#EAEAEA]">
+        <div className="mx-auto max-w-4xl">
+          <p className="text-sm font-medium text-[#999] mb-4">For SaaS founders & operators</p>
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-[#111111] leading-tight max-w-2xl">
+            Generate SaaS leads<br />without buying a single ad.
           </h1>
-          <p className="mt-6 text-lg text-[#555555] leading-relaxed max-w-2xl mx-auto">
-            Run a "Top SaaS Tools" award campaign and capture thousands of leads from your target market — while your competitors do the marketing for you.
+          <p className="mt-6 text-lg text-[#555555] leading-relaxed max-w-xl">
+            Run a "Top SaaS Tools" award. Your competitors become nominees and share to their audiences to win — you capture leads the whole time.
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <WaitlistForm source="saas-hero" className="max-w-md mx-auto" />
+          <div className="mt-10 max-w-md">
+            <WaitlistForm source="saas-hero" />
             <p className="mt-3 text-xs text-[#999]">Not live yet — join the waitlist for early access.</p>
           </div>
         </div>
@@ -89,38 +86,46 @@ export default function UseCaseSaaS() {
         </div>
       </section>
 
-      {/* How it works */}
+      {/* How it works — numbered list, not card grid */}
       <section className="py-24 px-6 border-b border-[#EAEAEA]">
         <div className="mx-auto max-w-4xl">
-          <div className="text-center mb-14">
-            <span className="text-xs font-semibold text-[#999] uppercase tracking-widest">Process</span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-[#111111]">How SaaS founders use Awardly</h2>
-            <p className="mt-3 text-[#666666]">From zero to viral in under 30 minutes.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#111111] mb-12">
+            From zero to viral in under an hour.
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10">
             {steps.map(s => (
-              <div key={s.step} className="group p-6 bg-white border border-[#EAEAEA] rounded-2xl hover:border-[#111111] transition-colors">
-                <span className="text-3xl font-bold text-[#EAEAEA] group-hover:text-[#111111] transition-colors leading-none">{s.step}</span>
-                <p className="mt-3 font-semibold text-[#111111]">{s.title}</p>
-                <p className="mt-2 text-sm text-[#666666] leading-relaxed">{s.body}</p>
+              <div key={s.step} className="flex gap-5">
+                <span className="text-5xl font-bold leading-none flex-shrink-0" style={{ color: '#EAEAEA' }}>{s.step}</span>
+                <div>
+                  <p className="font-semibold text-[#111111] text-lg">{s.title}</p>
+                  <p className="mt-1.5 text-sm text-[#666666] leading-relaxed">{s.body}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Outcomes */}
+      {/* Outcomes — lead with the best one full-width */}
       <section className="py-24 px-6 border-b border-[#EAEAEA] bg-[#FAFAFA]">
         <div className="mx-auto max-w-4xl">
-          <div className="text-center mb-14">
-            <span className="text-xs font-semibold text-[#999] uppercase tracking-widest">Outcomes</span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-[#111111]">What SaaS founders actually get</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#111111] mb-12">
+            What you actually get.
+          </h2>
+          <div className="flex gap-5 p-7 bg-white border border-[#EAEAEA] rounded-2xl mb-5">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#C8860A15' }}>
+              <Target className="h-5 w-5" style={{ color: '#C8860A' }} />
+            </div>
+            <div>
+              <p className="font-semibold text-[#111111] text-lg">{outcomes[0].title}</p>
+              <p className="mt-1.5 text-[#666666] leading-relaxed">{outcomes[0].body}</p>
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {outcomes.map(o => (
+            {outcomes.slice(1).map(o => (
               <div key={o.title} className="flex gap-4 p-6 bg-white border border-[#EAEAEA] rounded-2xl">
-                <div className="w-10 h-10 rounded-xl bg-[#FAFAFA] border border-[#EAEAEA] flex items-center justify-center flex-shrink-0">
-                  <o.icon className="h-5 w-5 text-[#111111]" />
+                <div className="w-9 h-9 rounded-xl bg-[#FAFAFA] border border-[#EAEAEA] flex items-center justify-center flex-shrink-0">
+                  <o.icon className="h-4 w-4 text-[#111111]" />
                 </div>
                 <div>
                   <p className="font-semibold text-[#111111]">{o.title}</p>
@@ -132,62 +137,51 @@ export default function UseCaseSaaS() {
         </div>
       </section>
 
-      {/* Example campaigns */}
+      {/* Example campaigns — table-style, not cards */}
       <section id="examples" className="py-24 px-6 border-b border-[#EAEAEA]">
         <div className="mx-auto max-w-4xl">
-          <div className="text-center mb-14">
-            <span className="text-xs font-semibold text-[#999] uppercase tracking-widest">Examples</span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-[#111111]">Example SaaS campaigns</h2>
-            <p className="mt-3 text-[#666666]">Real campaigns. Real numbers.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {campaignExamples.map(c => (
-              <div key={c.title} className="p-6 bg-[#FAFAFA] border border-[#EAEAEA] rounded-2xl">
-                <div className="flex items-center gap-2 mb-4">
-                  <Trophy className="h-4 w-4 text-[#111111]" />
-                  <p className="font-semibold text-sm text-[#111111]">{c.title}</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#111111] mb-3">Example campaigns</h2>
+          <p className="text-[#666666] mb-10">Projected numbers based on typical award campaign benchmarks.</p>
+          <div className="border border-[#EAEAEA] rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-4 bg-[#FAFAFA] px-6 py-3 border-b border-[#EAEAEA] text-xs font-semibold text-[#999] uppercase tracking-wide">
+              <span className="col-span-2">Campaign</span>
+              <span>Votes</span>
+              <span>Leads</span>
+            </div>
+            {campaignExamples.map((c, i) => (
+              <div key={c.title} className={`grid grid-cols-4 px-6 py-4 text-sm ${i < campaignExamples.length - 1 ? 'border-b border-[#EAEAEA]' : ''} hover:bg-[#FAFAFA] transition-colors`}>
+                <div className="col-span-2 flex items-center gap-2">
+                  <Trophy className="h-3.5 w-3.5 flex-shrink-0" style={{ color: '#C8860A' }} />
+                  <span className="font-medium text-[#111111]">{c.title}</span>
                 </div>
-                <div className="space-y-2.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#666666]">Votes</span>
-                    <span className="font-semibold text-[#111111]">{c.votes}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#666666]">Leads captured</span>
-                    <span className="font-semibold text-[#111111]">{c.leads}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#666666]">Nominees</span>
-                    <span className="font-semibold text-[#111111]">{c.nominees}</span>
-                  </div>
-                </div>
+                <span className="text-[#111111] font-semibold">{c.votes}</span>
+                <span className="text-[#111111] font-semibold">{c.leads}</span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Ideal for */}
+      {/* Ideal for — inline list, not card grid */}
       <section className="py-16 px-6 border-b border-[#EAEAEA] bg-[#FAFAFA]">
         <div className="mx-auto max-w-3xl">
-          <h3 className="text-lg font-bold text-[#111111] mb-6 text-center">Awardly works best if you are...</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <h3 className="text-lg font-bold text-[#111111] mb-6">This works best if you're...</h3>
+          <ul className="space-y-3">
             {idealFor.map(item => (
-              <div key={item} className="flex items-center gap-3 p-4 bg-white border border-[#EAEAEA] rounded-xl text-sm text-[#555555]">
-                <Check className="h-4 w-4 text-[#111111] flex-shrink-0" />
+              <li key={item} className="flex items-center gap-3 text-[#555555]">
+                <Check className="h-4 w-4 flex-shrink-0" style={{ color: '#C8860A' }} />
                 {item}
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
       {/* CTA */}
       <section className="py-24 px-6 bg-[#111111] text-white text-center">
         <div className="mx-auto max-w-xl">
-          <Trophy className="h-8 w-8 text-white mx-auto mb-5" />
-          <h2 className="text-3xl sm:text-4xl font-bold">Ready to generate SaaS leads without ads?</h2>
-          <p className="mt-4 text-[#666666]">We're not live yet — join the waitlist and get early beta access.</p>
+          <h2 className="text-3xl sm:text-4xl font-bold">Want leads without buying ads?</h2>
+          <p className="mt-4 text-[#666666]">Join the waitlist. Early access users launch first.</p>
           <WaitlistForm source="saas-cta" dark className="mt-8" />
         </div>
       </section>

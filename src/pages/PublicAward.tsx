@@ -61,28 +61,36 @@ export default function PublicAward() {
     <PublicLayout award={award}>
       <div className="bg-white min-h-screen">
         {/* Hero Section */}
-        <div className="relative bg-[#FAFAFA] border-b border-[#EAEAEA] py-24 sm:py-32">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8 text-center">
-            {award.logoUrl && (
-              <img src={award.logoUrl} alt={award.name} className="mx-auto h-24 w-auto mb-8 rounded-lg border border-[#EAEAEA]" />
-            )}
-            <h1 className="text-4xl font-bold tracking-tight sm:text-6xl mb-6 text-[#111111]">{award.name}</h1>
-            <p className="mt-6 text-lg leading-8 text-[#666666] max-w-2xl mx-auto">
-              {award.description}
-            </p>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4 text-sm">
-              {award.nominationEndDate && (
-                <div className="flex items-center gap-2 bg-white border border-[#EAEAEA] px-4 py-2 rounded-full text-[#111111]">
-                  <Calendar className="h-4 w-4" />
-                  <span>Nominations close: {format(new Date(award.nominationEndDate), 'MMM d, yyyy')}</span>
-                </div>
+        <div className="bg-[#111111] border-b border-[#222] py-16 sm:py-24">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+              {award.logoUrl && (
+                <img src={award.logoUrl} alt={award.name} className="h-16 w-auto rounded-xl border border-white/10 flex-shrink-0" />
               )}
-              {award.votingEndDate && (
-                <div className="flex items-center gap-2 bg-white border border-[#EAEAEA] px-4 py-2 rounded-full text-[#111111]">
-                  <Trophy className="h-4 w-4" />
-                  <span>Voting closes: {format(new Date(award.votingEndDate), 'MMM d, yyyy')}</span>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <Trophy className="h-4 w-4" style={{ color: '#C8860A' }} />
+                  <span className="text-xs font-semibold text-[#666] uppercase tracking-widest">Award Campaign</span>
                 </div>
-              )}
+                <h1 className="text-3xl sm:text-5xl font-bold text-white leading-tight">{award.name}</h1>
+                {award.description && (
+                  <p className="mt-3 text-[#888] max-w-2xl leading-relaxed">{award.description}</p>
+                )}
+                <div className="mt-5 flex flex-wrap items-center gap-3 text-sm">
+                  {award.nominationEndDate && (
+                    <div className="flex items-center gap-2 bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg text-[#CCCCCC]">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span>Nominations close {format(new Date(award.nominationEndDate), 'MMM d, yyyy')}</span>
+                    </div>
+                  )}
+                  {award.votingEndDate && (
+                    <div className="flex items-center gap-2 bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg text-[#CCCCCC]">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span>Voting closes {format(new Date(award.votingEndDate), 'MMM d, yyyy')}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -131,11 +139,11 @@ export default function PublicAward() {
         {/* Live Podium */}
         {topNominees.length > 0 && !searchQuery && (
           <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
-            <div className="mx-auto max-w-2xl text-center mb-12">
-              <h2 className="text-3xl font-bold tracking-tight text-[#111111] flex items-center justify-center gap-3">
-                <Medal className="h-8 w-8" /> Live Podium
+            <div className="mb-10">
+              <h2 className="text-2xl font-bold text-[#111111] flex items-center gap-2">
+                <Medal className="h-5 w-5" style={{ color: '#C8860A' }} /> Live Podium
               </h2>
-              <p className="mt-4 text-lg leading-8 text-[#666666]">Top voted nominees across all categories.</p>
+              <p className="text-[#666666] mt-1">Top voted nominees across all categories</p>
             </div>
             
             <div className="flex flex-col md:flex-row items-end justify-center gap-6 max-w-4xl mx-auto h-80">
@@ -186,9 +194,9 @@ export default function PublicAward() {
 
         {/* Categories Section */}
         <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16 sm:py-24">
-          <div className="mx-auto max-w-2xl text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tight text-[#111111] sm:text-4xl">Award Categories</h2>
-            <p className="mt-4 text-lg leading-8 text-[#666666]">Select a category to view nominees, vote, or submit a new nomination.</p>
+          <div className="mb-10">
+            <h2 className="text-2xl font-bold text-[#111111]">Categories</h2>
+            <p className="mt-1 text-[#666666]">Select a category to view nominees and vote.</p>
           </div>
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
