@@ -9,6 +9,10 @@ export default function Navbar() {
   const location = useLocation();
   const isLanding = location.pathname === '/';
   const isPublicPage = !user && (location.pathname === '/' || location.pathname.startsWith('/use-cases/'));
+  const isPublicAwardPage = location.pathname.startsWith('/award/');
+
+  // Public award pages have their own branded header via PublicLayout — hide the global nav
+  if (isPublicAwardPage) return null;
 
   return (
     <nav className={`sticky z-50 ${isPublicPage ? 'top-0 px-4 pt-3 sm:px-6' : 'top-0 bg-white/95 backdrop-blur border-b border-[#EAEAEA]'}`}>
