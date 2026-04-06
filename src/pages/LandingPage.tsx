@@ -113,7 +113,7 @@ const useCases = [
 // Main LandingPage
 // -------------------------------------------------------------------
 export default function LandingPage() {
-  const { user } = useAuth();
+  const { user, signIn } = useAuth();
   if (user) return <Navigate to="/dashboard" />;
 
   return (
@@ -222,7 +222,7 @@ export default function LandingPage() {
       {/* ============================================================
           4. SOLUTION — how the loop works
       ============================================================ */}
-      <section className="py-24 px-6 border-b border-[#EAEAEA] bg-[#FAFAFA]">
+      <section id="use-cases" className="py-24 px-6 border-b border-[#EAEAEA] bg-[#FAFAFA]">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-[#111111]">
             Awards create a loop<br />that runs on its own.
@@ -292,7 +292,7 @@ export default function LandingPage() {
       {/* ============================================================
           6. BENEFITS — varied layout: 1 wide + 2-col grid
       ============================================================ */}
-      <section className="py-24 px-6 border-b border-[#EAEAEA] bg-[#FAFAFA]">
+      <section id="use-cases" className="py-24 px-6 border-b border-[#EAEAEA] bg-[#FAFAFA]">
         <div className="mx-auto max-w-4xl">
           <div className="text-center mb-14">
             <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-[#111111]">
@@ -598,6 +598,61 @@ export default function LandingPage() {
           <p className="mt-4 text-xs text-[#444444]">No spam. No subscription. Just an early access notification.</p>
         </div>
       </section>
+      <footer id="footer" className="bg-[#111111] border-t border-white/10 px-6 py-12">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid gap-10 md:grid-cols-[1.3fr_0.8fr_0.8fr_1fr]">
+            <div>
+              <Link to="/" className="inline-flex items-center text-2xl font-bold tracking-tight text-white">
+                theawards<span style={{ color: ACCENT }}>app</span>
+              </Link>
+              <p className="mt-4 max-w-sm text-sm leading-6 text-[#999999]">
+                Launch award campaigns that nominees want to share, voters want to join, and your team can turn into qualified pipeline.
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">Product</p>
+              <div className="mt-4 space-y-3 text-sm text-[#999999]">
+                <Link to="/" className="block transition-colors hover:text-white">Home</Link>
+                <a href="#live-example" className="block transition-colors hover:text-white">Live demo</a>
+                <a href="#pricing" className="block transition-colors hover:text-white">Pricing</a>
+                <a href="#waitlist" className="block transition-colors hover:text-white">Join waitlist</a>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">Use cases</p>
+              <div className="mt-4 space-y-3 text-sm text-[#999999]">
+                <Link to="/use-cases/saas" className="block transition-colors hover:text-white">SaaS</Link>
+                <Link to="/use-cases/real-estate" className="block transition-colors hover:text-white">Real estate</Link>
+                <Link to="/use-cases/marketing" className="block transition-colors hover:text-white">Marketing</Link>
+                <a href="#use-cases" className="block transition-colors hover:text-white">All use cases</a>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">Access</p>
+              <div className="mt-4 space-y-3 text-sm text-[#999999]">
+                <button
+                  onClick={signIn}
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 font-medium text-white transition-colors hover:bg-white/10"
+                >
+                  Sign in
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+                <p className="text-xs leading-5 text-[#666666]">
+                  Private beta access is invite-based. Join the waitlist to be first in line.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-10 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-[#666666] sm:flex-row sm:items-center sm:justify-between">
+            <p>© 2026 theawardsapp. Built for modern award campaigns.</p>
+            <div className="flex items-center gap-4">
+              <a href="#pricing" className="transition-colors hover:text-white">Pricing</a>
+              <a href="#waitlist" className="transition-colors hover:text-white">Waitlist</a>
+              <a href="#live-example" className="transition-colors hover:text-white">Demo</a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

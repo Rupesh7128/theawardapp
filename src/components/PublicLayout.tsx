@@ -63,7 +63,7 @@ export default function PublicLayout({ children, award }: PublicLayoutProps) {
             )}
             <span className="text-[#EAEAEA]">|</span>
             <a href="/" className="hover:text-[#111111] font-medium flex items-center gap-1">
-              Powered by <span className="text-[#111111] font-semibold">Awardly</span>
+              Powered by <span className="text-[#111111] font-semibold">theawardsapp</span>
             </a>
           </div>
         </div>

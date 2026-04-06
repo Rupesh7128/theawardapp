@@ -18,7 +18,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link to="/" className="flex-shrink-0 flex items-center gap-2.5">
             <span className={`${isPublicPage ? 'text-lg' : 'text-xl'} font-bold tracking-tight text-[#111111]`}>
-              Award<span style={{ color: '#C8860A' }}>ly</span>
+              theawards<span style={{ color: '#C8860A' }}>app</span>
             </span>
           </Link>
 
