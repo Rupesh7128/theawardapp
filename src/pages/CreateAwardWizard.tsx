@@ -629,7 +629,7 @@ export default function CreateAwardWizard() {
             </button>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1.3fr_360px]">
+          <div className="grid gap-6">
             <div className="rounded-[32px] border border-white/70 bg-white/92 p-6 shadow-[0_24px_100px_rgba(17,17,17,0.08)] sm:p-8 md:p-10">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="rounded-full bg-[#F4F2EE] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[#777777]">
@@ -708,56 +708,6 @@ export default function CreateAwardWizard() {
                 </div>
               </div>
             </div>
-
-            <aside className="rounded-[32px] border border-[#1A1A1A] bg-[#111111] p-6 text-white shadow-[0_24px_100px_rgba(17,17,17,0.22)]">
-              <p className="text-xs uppercase tracking-[0.24em] text-[#8C8C8C]">Live Preview</p>
-              <div className="mt-6 rounded-[28px] border border-white/10 bg-[#090909] p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-2xl font-semibold tracking-tight text-white">{name || 'Your campaign title'}</p>
-                    <p className="mt-3 text-sm leading-7 text-[#9A9A9A]">
-                      {description || 'Your campaign summary will appear here as you answer each question.'}
-                    </p>
-                  </div>
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-                    {logoPreview ? (
-                      <img src={logoPreview} alt="Campaign logo preview" className="h-12 w-12 rounded-xl object-cover" />
-                    ) : (
-                      <Target className="h-5 w-5 text-[#C8860A]" />
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-[#8C8C8C]">Timeline</p>
-                  <div className="mt-3 space-y-2 text-sm text-[#E5E5E5]">
-                    <p>Nomination opens: {nominationOpenDate || 'TBD'}</p>
-                    <p>Voting starts: {votingStartDate || 'TBD'}</p>
-                    <p>Voting ends: {votingEndDate || 'TBD'}</p>
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-[#8C8C8C]">Categories</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {categories.length > 0 ? (
-                      categories.slice(0, 5).map((category: Category) => (
-                        <span key={category.name} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-[#E9E9E9]">
-                          {category.name}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-sm text-[#7A7A7A]">Categories appear here after you generate or add them.</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-[#8C8C8C]">Landing Page</p>
-                  <p className="mt-3 text-sm text-[#E5E5E5]">{landingPageUrl || 'Not added yet'}</p>
-                </div>
-              </div>
-            </aside>
           </div>
         </div>
       </div>
