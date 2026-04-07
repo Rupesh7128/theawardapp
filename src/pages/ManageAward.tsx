@@ -42,7 +42,12 @@ export default function ManageAward() {
   const [rulesUrl, setRulesUrl] = useState('');
   const [privacyPolicyUrl, setPrivacyPolicyUrl] = useState('');
   const [status, setStatus] = useState('draft');
+  const [isPublicDirectory, setIsPublicDirectory] = useState(false);
+  const [customDomain, setCustomDomain] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
+  const [savingDirectory, setSavingDirectory] = useState(false);
+  const [savingDomain, setSavingDomain] = useState(false);
+  const [domainSaved, setDomainSaved] = useState(false);
 
   // AI Generation State
   const [isGeneratingCategories, setIsGeneratingCategories] = useState(false);
@@ -80,6 +85,8 @@ export default function ManageAward() {
         setRulesUrl(awardData.rulesUrl || '');
         setPrivacyPolicyUrl(awardData.privacyPolicyUrl || '');
         setStatus(awardData.status || 'draft');
+        setIsPublicDirectory(awardData.isPublicDirectory || false);
+        setCustomDomain(awardData.customDomain || '');
 
         // Fetch Categories
         const catQ = query(collection(db, 'categories'), where('awardId', '==', id));
@@ -944,11 +951,11 @@ export default function ManageAward() {
         {activeTab === 'publish' && (
           <div className="px-6 py-8">
             <div className="mb-8">
-              <h3 className="text-lg font-semibold leading-6 text-[#111111]">Publish & Embed</h3>
+              <h3 className="text-lg font-semibold leading-6 text-[#111111]">Publish & Share</h3>
               <p className="mt-1 text-sm text-[#666666]">Share your award campaign with the world.</p>
             </div>
 
-            <div className="space-y-8">
+            <div className="space-y-6">
               {/* Direct Link */}
               <div className="bg-[#FAFAFA] border border-[#EAEAEA] rounded-xl p-6">
                 <h4 className="text-base font-semibold text-[#111111] flex items-center gap-2">
@@ -970,6 +977,75 @@ export default function ManageAward() {
                     className="inline-flex items-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black transition-colors whitespace-nowrap"
                   >
                     Copy Link
+                  </button>
+                </div>
+                <div className="mt-4 flex items-center gap-3">
+                  <a
+                    href={`https://twitter.com/intent/tweet?text=Vote+now+for+${encodeURIComponent(award?.name || 'our award')}!&url=${encodeURIComponent(`${window.location.origin}/award/${id}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-md bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#111] transition-colors"
+                  >
+                    Share on X (Twitter)
+                  </a>
+                  <a
+                    href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`${window.location.origin}/award/${id}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-md bg-[#0A66C2] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0958a8] transition-colors"
+                  >
+                    Share on LinkedIn
+                  </a>
+                </div>
+              </div>
+
+              {/* Add to Directory */}
+              <div className="bg-white border border-[#EAEAEA] rounded-xl p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h4 className="text-base font-semibold text-[#111111] flex items-center gap-2">
+                      <Globe className="h-5 w-5" /> List in Public Directory
+                    </h4>
+                    <p className="mt-1.5 text-sm text-[#666666] leading-relaxed">
+                      Show your award on the public <a href="/directory" target="_blank" className="underline text-[#111111]">Awards Directory</a> — visible to everyone browsing live campaigns on our site.
+                    </p>
+                    {isPublicDirectory && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                        <span className="text-xs font-medium text-green-700">Listed in directory</span>
+                        <a
+                          href="/directory"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-[#666] underline ml-2"
+                        >
+                          View listing →
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    disabled={savingDirectory}
+                    onClick={async () => {
+                      if (!id) return;
+                      setSavingDirectory(true);
+                      try {
+                        const newVal = !isPublicDirectory;
+                        await updateDoc(doc(db, 'awards', id), { isPublicDirectory: newVal });
+                        setIsPublicDirectory(newVal);
+                      } catch (e) {
+                        console.error(e);
+                      } finally {
+                        setSavingDirectory(false);
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isPublicDirectory ? 'bg-[#111111]' : 'bg-[#EAEAEA]'}`}
+                    role="switch"
+                    aria-checked={isPublicDirectory}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isPublicDirectory ? 'translate-x-5' : 'translate-x-0'}`}
+                    />
                   </button>
                 </div>
               </div>
@@ -1010,21 +1086,83 @@ export default function ManageAward() {
                     <span className="inline-flex items-center rounded-full bg-[#111111] px-2 py-0.5 text-xs font-medium text-white">Admin Approved</span>
                   )}
                 </h4>
-                <p className="mt-2 text-sm text-[#666666]">Host this campaign on your own domain (e.g., awards.yourcompany.com).</p>
-                
+                <p className="mt-2 text-sm text-[#666666]">Host this campaign on your own domain (e.g., <code className="font-mono text-xs bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded">awards.yourcompany.com</code>).</p>
+
                 {hasProAccess ? (
-                  <div className="mt-4 flex items-center gap-3">
-                    <input
-                      type="text"
-                      placeholder="awards.yourcompany.com"
-                      className="block w-full rounded-md border-0 py-2 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] bg-white sm:text-sm sm:leading-6 px-3"
-                    />
-                    <button
-                      onClick={() => alert('Custom domain configuration saved. Please point your CNAME record to our servers.')}
-                      className="inline-flex items-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black transition-colors whitespace-nowrap"
-                    >
-                      Save Domain
-                    </button>
+                  <div className="mt-4 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        placeholder="awards.yourcompany.com"
+                        value={customDomain}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomDomain(e.target.value)}
+                        className="block w-full rounded-md border-0 py-2 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] bg-white sm:text-sm sm:leading-6 px-3"
+                      />
+                      <button
+                        disabled={savingDomain}
+                        onClick={async () => {
+                          if (!id) return;
+                          setSavingDomain(true);
+                          try {
+                            const newDomain = customDomain.trim();
+                            // First save to our database
+                            await updateDoc(doc(db, 'awards', id), { customDomain: newDomain });
+                            
+                            // If Vercel API is available, call it to dynamically provision the SSL
+                            if (newDomain) {
+                              try {
+                                await fetch('/api/add-domain', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ domain: newDomain })
+                                });
+                              } catch (err) {
+                                console.warn('Could not provision via Vercel API automatically. You may need to manually add it in the Vercel Dashboard if the API route is missing.');
+                              }
+                            }
+                            
+                            setDomainSaved(true);
+                            setTimeout(() => setDomainSaved(false), 3000);
+                          } catch (e) {
+                            console.error(e);
+                          } finally {
+                            setSavingDomain(false);
+                          }
+                        }}
+                        className="inline-flex items-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black transition-colors whitespace-nowrap"
+                      >
+                        {domainSaved ? <><Check className="h-4 w-4 mr-1.5" /> Saved</> : savingDomain ? 'Saving...' : 'Save Domain'}
+                      </button>
+                    </div>
+
+                    {/* DNS Instructions */}
+                    {customDomain && (
+                      <div className="bg-[#FAFAFA] border border-[#EAEAEA] rounded-lg p-4 space-y-3">
+                        <p className="text-xs font-semibold text-[#111111] uppercase tracking-wide">DNS Setup Instructions</p>
+                        <p className="text-xs text-[#666666]">Add the following CNAME record to your domain's DNS settings:</p>
+                        <div className="bg-white border border-[#EAEAEA] rounded-md overflow-hidden">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="border-b border-[#EAEAEA] bg-[#FAFAFA]">
+                                <th className="text-left px-3 py-2 font-semibold text-[#111111]">Type</th>
+                                <th className="text-left px-3 py-2 font-semibold text-[#111111]">Name</th>
+                                <th className="text-left px-3 py-2 font-semibold text-[#111111]">Value</th>
+                                <th className="text-left px-3 py-2 font-semibold text-[#111111]">TTL</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td className="px-3 py-2 font-mono text-[#111111]">CNAME</td>
+                                <td className="px-3 py-2 font-mono text-[#111111]">{customDomain.split('.')[0]}</td>
+                                <td className="px-3 py-2 font-mono text-[#111111]">proxy.theawardsapp.com</td>
+                                <td className="px-3 py-2 font-mono text-[#666]">3600</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        <p className="text-xs text-[#999]">DNS changes can take up to 48 hours to propagate. Contact support once you've added the record.</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="mt-4">

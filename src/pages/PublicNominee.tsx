@@ -6,8 +6,10 @@ import { ArrowLeft, Globe, Sparkles } from 'lucide-react';
 
 import PublicLayout from '../components/PublicLayout';
 
-export default function PublicNominee() {
-  const { id, nomineeId } = useParams<{ id: string, nomineeId: string }>();
+export default function PublicNominee({ customAwardId }: { customAwardId?: string }) {
+  const { id: paramId, nomineeId } = useParams<{ id: string, nomineeId: string }>();
+  const id = customAwardId || paramId;
+    const basePath = customAwardId ? '' : `/award/${id}`;
   const [award, setAward] = useState<any>(null);
   const [nominee, setNominee] = useState<any>(null);
   const [category, setCategory] = useState<any>(null);
@@ -55,7 +57,7 @@ export default function PublicNominee() {
     <PublicLayout award={award}>
       <div className="bg-[#FAFAFA] min-h-screen py-12">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link to={`/award/${id}/category/${nominee.categoryId}`} className="inline-flex items-center text-sm font-medium text-[#111111] hover:text-black mb-8 transition-colors">
+          <Link to={`${basePath}/category/${nominee.categoryId}`} className="inline-flex items-center text-sm font-medium text-[#111111] hover:text-black mb-8 transition-colors">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to {category?.name || 'Category'}
           </Link>

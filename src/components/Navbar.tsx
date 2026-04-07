@@ -10,9 +10,10 @@ export default function Navbar() {
   const isLanding = location.pathname === '/';
   const isPublicPage = !user && (location.pathname === '/' || location.pathname.startsWith('/use-cases/'));
   const isPublicAwardPage = location.pathname.startsWith('/award/');
+  const isDirectoryPage = location.pathname === '/directory';
 
   // Public award pages have their own branded header via PublicLayout — hide the global nav
-  if (isPublicAwardPage) return null;
+  if (isPublicAwardPage || isDirectoryPage) return null;
 
   return (
     <nav className={`sticky z-50 ${isPublicPage ? 'top-0 px-4 pt-3 sm:px-6' : 'top-0 bg-white/95 backdrop-blur border-b border-[#EAEAEA]'}`}>
@@ -30,7 +31,7 @@ export default function Navbar() {
             <div className="hidden sm:flex items-center gap-6 text-sm font-medium text-[#555555]">
               <a href="#live-example" className="hover:text-[#111111] transition-colors">Demo</a>
               <a href="#pricing" className="hover:text-[#111111] transition-colors">Pricing</a>
-              <a href="#footer" className="hover:text-[#111111] transition-colors">Pages</a>
+              <Link to="/directory" className="hover:text-[#111111] transition-colors">Directory</Link>
               <Link to="/use-cases/saas" className="hover:text-[#111111] transition-colors">Use cases</Link>
             </div>
           )}

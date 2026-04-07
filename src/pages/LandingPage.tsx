@@ -5,10 +5,13 @@ import {
   ArrowRight, Check, Trophy, Users, Zap, ShieldCheck, Sparkles,
   TrendingUp, Award, Mail, Globe, ChevronRight, Play,
   BarChart2, Target, Share2, Building2, Megaphone, Cpu,
-  DollarSign, VolumeX, Clock
+  DollarSign, VolumeX, Clock, Calendar
 } from 'lucide-react';
 import WaitlistForm from '../components/WaitlistForm';
 import BrandMark from '../components/BrandMark';
+import { db } from '../lib/firebase';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 const ACCENT = '#C8860A';
 
@@ -109,6 +112,104 @@ const useCases = [
     bullets: ['Zero ad spend needed', 'Nominees do the marketing', 'Build an email list fast'],
   },
 ];
+
+// -------------------------------------------------------------------
+// Live Awards Section — fetches real directory listings from Firestore
+// -------------------------------------------------------------------
+function LiveAwardsSection() {
+  const [awards, setAwards] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchAwards = async () => {
+      try {
+        const q = query(
+          collection(db, 'awards'),
+          where('status', '==', 'published'),
+          where('isPublicDirectory', '==', true),
+          limit(6)
+        );
+        const snap = await getDocs(q);
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        data.sort((a, b) => ((b as any).createdAt?.seconds || 0) - ((a as any).createdAt?.seconds || 0));
+        setAwards(data);
+      } catch {
+        // silently skip if no directory awards exist yet
+      }
+    };
+    fetchAwards();
+  }, []);
+
+  if (awards.length === 0) return null;
+
+  return (
+    <section className="py-24 px-6 border-b border-[#EAEAEA]">
+      <div className="mx-auto max-w-4xl">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#C8860A' }} />
+              <span className="text-xs font-semibold text-[#999] uppercase tracking-widest">Live Now</span>
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-[#111111]">
+              Active award campaigns
+            </h2>
+            <p className="mt-3 text-lg text-[#666666]">Browse and vote in live campaigns from our directory.</p>
+          </div>
+          <Link
+            to="/directory"
+            className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold text-[#111111] border border-[#EAEAEA] px-4 py-2 rounded-xl hover:border-[#111111] transition-colors whitespace-nowrap"
+          >
+            View all <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {awards.map(award => (
+            <Link
+              key={award.id}
+              to={`/award/${award.id}`}
+              className="group flex flex-col bg-white border border-[#EAEAEA] rounded-2xl overflow-hidden hover:border-[#111111] hover:shadow-md transition-all"
+            >
+              <div className="bg-[#111111] px-5 py-4 flex items-center gap-3">
+                {award.logoUrl ? (
+                  <img src={award.logoUrl} alt={award.name} className="h-8 w-8 rounded-lg object-contain border border-white/10 bg-white/5 flex-shrink-0" />
+                ) : (
+                  <div className="h-8 w-8 rounded-lg bg-white/10 border border-white/10 flex items-center justify-center flex-shrink-0">
+                    <Trophy className="h-4 w-4 text-white/50" />
+                  </div>
+                )}
+                <p className="font-bold text-white text-sm truncate">{award.name}</p>
+              </div>
+              <div className="flex-1 p-5">
+                {award.description && (
+                  <p className="text-sm text-[#666666] line-clamp-2 leading-relaxed mb-3">{award.description}</p>
+                )}
+                {award.votingEndDate && (
+                  <p className="text-xs text-[#999] flex items-center gap-1.5">
+                    <Calendar className="h-3 w-3" />
+                    Voting closes {format(new Date(award.votingEndDate), 'MMM d, yyyy')}
+                  </p>
+                )}
+              </div>
+              <div className="px-5 pb-4 flex items-center gap-1 text-xs font-semibold text-[#111111] group-hover:gap-2 transition-all">
+                Vote now <ArrowRight className="h-3.5 w-3.5" />
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        <div className="mt-8 sm:hidden text-center">
+          <Link
+            to="/directory"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#111111] border border-[#EAEAEA] px-5 py-2.5 rounded-xl hover:border-[#111111] transition-colors"
+          >
+            View all awards <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 // -------------------------------------------------------------------
 // Main LandingPage
@@ -376,6 +477,11 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ============================================================
+          LIVE AWARDS DIRECTORY
+      ============================================================ */}
+      <LiveAwardsSection />
 
       {/* ============================================================
           8. USE CASES

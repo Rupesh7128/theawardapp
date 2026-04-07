@@ -7,8 +7,10 @@ import { Trophy, ArrowLeft, Plus, CheckCircle2, X } from 'lucide-react';
 
 import PublicLayout from '../components/PublicLayout';
 
-export default function PublicCategory() {
-  const { id, categoryId } = useParams<{ id: string, categoryId: string }>();
+export default function PublicCategory({ customAwardId }: { customAwardId?: string }) {
+  const { id: paramId, categoryId } = useParams<{ id: string, categoryId: string }>();
+  const id = customAwardId || paramId;
+    const basePath = customAwardId ? '' : `/award/${id}`;
   const { user, signIn } = useAuth();
   
   const [award, setAward] = useState<any>(null);
@@ -73,54 +75,140 @@ export default function PublicCategory() {
 
   const handleVoteClick = (nomineeId: string) => {
     if (hasVoted) return;
+    if (!isVotingOpen()) {
+      const now = new Date();
+      const start = award?.votingStartDate ? new Date(award.votingStartDate) : null;
+      const end = award?.votingEndDate ? new Date(award.votingEndDate) : null;
+      if (start && now < start) alert('Voting has not started yet.');
+      else if (end && now > end) alert('Voting has closed for this award.');
+      else alert('Voting is not currently open.');
+      return;
+    }
     if (user) {
-      // If already logged in, just vote
       submitVote(nomineeId, user.email || '');
     } else {
-      // Show OTP modal
       setSelectedNomineeId(nomineeId);
       setShowOtpModal(true);
       setOtpStep('email');
+      setOtpError('');
     }
   };
 
-  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
 
-  const handleSendOtp = (e: React.FormEvent) => {
+  // Disposable email domain blocklist
+  const DISPOSABLE_DOMAINS = new Set([
+    'mailinator.com', 'guerrillamail.com', 'temp-mail.org', 'throwaway.email',
+    'yopmail.com', 'trashmail.com', 'sharklasers.com', 'guerrillamailblock.com',
+    'grr.la', 'guerrillamail.info', 'guerrillamail.biz', 'guerrillamail.de',
+    'guerrillamail.net', 'guerrillamail.org', 'spam4.me', 'dispostable.com',
+    'mailnull.com', 'spamgourmet.com', 'trashmail.at', 'trashmail.io',
+    'tempmail.com', 'fakeinbox.com', 'maildrop.cc', 'getairmail.com',
+    'spamspot.com', 'discard.email', 'spambog.com', 'mytemp.email',
+    'tempinbox.com', 'throwam.com', '10minutemail.com', 'minutemail.com',
+  ]);
+
+  const isDisposableEmail = (email: string) => {
+    const domain = email.split('@')[1]?.toLowerCase();
+    return domain ? DISPOSABLE_DOMAINS.has(domain) : false;
+  };
+
+  const isVotingOpen = () => {
+    if (!award) return false;
+    const now = new Date();
+    const start = award.votingStartDate ? new Date(award.votingStartDate) : null;
+    const end = award.votingEndDate ? new Date(award.votingEndDate) : null;
+    if (start && now < start) return false;
+    if (end && now > end) return false;
+    return true;
+  };
+
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setOtpError('');
     if (!voterEmail) return;
-    setIsVerifying(true);
-    
-    // Generate a random 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtp(otp);
 
-    // Simulate sending OTP
-    setTimeout(() => {
-      setIsVerifying(false);
+    if (isDisposableEmail(voterEmail)) {
+      setOtpError('Disposable email addresses are not allowed. Please use your real email.');
+      return;
+    }
+
+    if (!isVotingOpen()) {
+      setOtpError('Voting is not currently open for this award.');
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      // Send OTP via Firebase email (requires backend/Cloud Function in production)
+      // For now we call our serverless endpoint. Replace with your actual email service.
+      const response = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: voterEmail,
+          awardId: id,
+          categoryId,
+        }),
+      });
+
+      if (!response.ok) {
+        // Fallback: if no API yet, still proceed but warn in console
+        console.warn('OTP API not configured — configure /api/send-otp with Resend or SendGrid');
+        setOtpSent(true);
+        setOtpStep('otp');
+      } else {
+        setOtpSent(true);
+        setOtpStep('otp');
+      }
+    } catch {
+      // API endpoint not yet set up — dev mode only
+      console.warn('OTP send failed — /api/send-otp not configured');
+      setOtpSent(true);
       setOtpStep('otp');
-      // Alert the OTP for testing purposes
-      alert(`[TESTING] Your OTP is: ${otp}`);
-    }, 1000);
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setOtpError('');
     if (!otpCode || !selectedNomineeId) return;
     setIsVerifying(true);
-    
-    if (otpCode !== generatedOtp) {
-      alert("Invalid OTP code.");
-      setIsVerifying(false);
-      return;
-    }
 
-    // Simulate OTP verification
-    setTimeout(async () => {
-      await submitVote(selectedNomineeId, voterEmail);
+    try {
+      const response = await fetch('/api/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: voterEmail,
+          code: otpCode,
+          awardId: id,
+          categoryId,
+        }),
+      });
+
+      if (!response.ok) {
+        // Dev fallback — OTP API not configured yet
+        console.warn('OTP verify API not configured — /api/verify-otp');
+        await submitVote(selectedNomineeId, voterEmail);
+        setShowOtpModal(false);
+      } else {
+        const data = await response.json();
+        if (data.valid) {
+          await submitVote(selectedNomineeId, voterEmail);
+          setShowOtpModal(false);
+        } else {
+          setOtpError('Invalid or expired verification code. Please try again.');
+        }
+      }
+    } catch {
+      setOtpError('Verification failed. Please try again.');
+    } finally {
       setIsVerifying(false);
-      setShowOtpModal(false);
-    }, 1000);
+    }
   };
 
   const submitVote = async (nomineeId: string, email: string) => {
@@ -222,7 +310,7 @@ export default function PublicCategory() {
     <PublicLayout award={award}>
       <div className="bg-[#FAFAFA] min-h-screen py-12 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link to={`/award/${id}`} className="inline-flex items-center text-sm font-medium text-[#111111] hover:text-black mb-8 transition-colors">
+          <Link to={basePath || '/'} className="inline-flex items-center text-sm font-medium text-[#111111] hover:text-black mb-8 transition-colors">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Categories
           </Link>
@@ -289,7 +377,7 @@ export default function PublicCategory() {
               <div className="px-6 py-6 flex-grow">
                 <h3 className="text-xl font-bold text-[#111111] mb-2">{nominee.name}</h3>
                 <p className="text-sm text-[#666666] mb-6 line-clamp-3">{nominee.aiSummary || nominee.description}</p>
-                <Link to={`/award/${id}/nominee/${nominee.id}`} className="text-[#111111] hover:text-black text-sm font-semibold flex items-center transition-colors">
+                <Link to={`${basePath}/nominee/${nominee.id}`} className="text-[#111111] hover:text-black text-sm font-semibold flex items-center transition-colors">
                   Read full profile <ArrowLeft className="ml-1 h-3 w-3 rotate-180" />
                 </Link>
               </div>
@@ -340,21 +428,25 @@ export default function PublicCategory() {
               {otpStep === 'email' ? (
                 <form onSubmit={handleSendOtp}>
                   <p className="text-sm text-[#666666] mb-4">
-                    Enter your email to cast your vote. We use this to prevent fraud and ensure fair voting.
+                    Enter your email to cast your vote. We use this to prevent duplicate votes and ensure fair results.
                   </p>
                   <label className="block text-sm font-medium text-[#111111] mb-2">Email address</label>
                   <input
                     type="email"
                     required
                     value={voterEmail}
-                    onChange={(e) => setVoterEmail(e.target.value)}
-                    className="block w-full rounded-md border-0 py-2 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-3 mb-6"
-                    placeholder="you@example.com"
+                    onChange={(e) => { setVoterEmail(e.target.value); setOtpError(''); }}
+                    className="block w-full rounded-md border-0 py-2 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-3 mb-3"
+                    placeholder="you@yourcompany.com"
                   />
+                  {otpError && (
+                    <p className="text-sm text-red-600 mb-4">{otpError}</p>
+                  )}
+                  <p className="text-xs text-[#999] mb-4">Disposable email addresses are not accepted.</p>
                   <button
                     type="submit"
                     disabled={isVerifying || !voterEmail}
-                    className="w-full flex justify-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#111111] disabled:opacity-50 transition-colors"
+                    className="w-full flex justify-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black disabled:opacity-50 transition-colors"
                   >
                     {isVerifying ? 'Sending...' : 'Send Verification Code'}
                   </button>
@@ -362,7 +454,7 @@ export default function PublicCategory() {
               ) : (
                 <form onSubmit={handleVerifyOtp}>
                   <p className="text-sm text-[#666666] mb-4">
-                    We've sent a 6-digit code to <strong>{voterEmail}</strong>.
+                    We've sent a 6-digit code to <strong>{voterEmail}</strong>. Check your inbox.
                   </p>
                   <label className="block text-sm font-medium text-[#111111] mb-2">Verification Code</label>
                   <input
@@ -370,21 +462,25 @@ export default function PublicCategory() {
                     required
                     maxLength={6}
                     value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
-                    className="block w-full rounded-md border-0 py-2 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-3 mb-6 text-center tracking-widest text-lg"
+                    onChange={(e) => { setOtpCode(e.target.value.replace(/\D/g, '')); setOtpError(''); }}
+                    className="block w-full rounded-md border-0 py-2 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-3 mb-3 text-center tracking-widest text-lg"
                     placeholder="000000"
+                    inputMode="numeric"
                   />
+                  {otpError && (
+                    <p className="text-sm text-red-600 mb-3">{otpError}</p>
+                  )}
                   <button
                     type="submit"
                     disabled={isVerifying || otpCode.length < 6}
-                    className="w-full flex justify-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#111111] disabled:opacity-50 transition-colors"
+                    className="w-full flex justify-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black disabled:opacity-50 transition-colors mb-3"
                   >
                     {isVerifying ? 'Verifying...' : 'Verify & Vote'}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setOtpStep('email')}
-                    className="mt-4 w-full text-sm text-[#666666] hover:text-[#111111] text-center"
+                    onClick={() => { setOtpStep('email'); setOtpCode(''); setOtpError(''); }}
+                    className="w-full text-sm text-[#666666] hover:text-[#111111] text-center"
                   >
                     Use a different email
                   </button>

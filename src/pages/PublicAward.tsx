@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { Trophy, Calendar, ArrowRight, Search, Medal } from 'lucide-react';
+import { Trophy, Calendar, ArrowRight, Search, Medal, Share2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 import PublicLayout from '../components/PublicLayout';
 
-export default function PublicAward() {
-  const { id } = useParams<{ id: string }>();
+export default function PublicAward({ customAwardId }: { customAwardId?: string }) {
+  const { id: paramId } = useParams<{ id: string }>();
+  const id = customAwardId || paramId;
+    const basePath = customAwardId ? '' : `/award/${id}`;
   const [award, setAward] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [allNominees, setAllNominees] = useState<any[]>([]);
@@ -90,6 +92,34 @@ export default function PublicAward() {
                     </div>
                   )}
                 </div>
+                {/* Share buttons */}
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-[#666] flex items-center gap-1.5 mr-1">
+                    <Share2 className="h-3.5 w-3.5" /> Share:
+                  </span>
+                  <a
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Vote now for ${award.name}! `)}&url=${encodeURIComponent(window.location.href)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/10 px-3 py-1.5 rounded-lg text-[#CCCCCC] text-xs font-medium transition-colors"
+                  >
+                    X (Twitter)
+                  </a>
+                  <a
+                    href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/10 px-3 py-1.5 rounded-lg text-[#CCCCCC] text-xs font-medium transition-colors"
+                  >
+                    LinkedIn
+                  </a>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(window.location.href); }}
+                    className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/10 px-3 py-1.5 rounded-lg text-[#CCCCCC] text-xs font-medium transition-colors"
+                  >
+                    Copy Link
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -116,7 +146,7 @@ export default function PublicAward() {
                     const cat = categories.find(c => c.id === nominee.categoryId);
                     return (
                       <li key={nominee.id} className="p-4 hover:bg-[#FAFAFA] transition-colors">
-                        <Link to={`/award/${id}/category/${nominee.categoryId}`} className="flex justify-between items-center">
+                        <Link to={`${basePath}/category/${nominee.categoryId}`} className="flex justify-between items-center">
                           <div>
                             <h4 className="font-semibold text-[#111111]">{nominee.name}</h4>
                             <p className="text-sm text-[#666666]">{cat?.name}</p>
@@ -203,7 +233,7 @@ export default function PublicAward() {
             {categories.map((category) => (
               <Link
                 key={category.id}
-                to={`/award/${id}/category/${category.id}`}
+                to={`${basePath}/category/${category.id}`}
                 className="group relative flex flex-col justify-between rounded-2xl bg-white p-8 shadow-sm ring-1 ring-[#EAEAEA] hover:shadow-md hover:ring-[#111111] transition-all"
               >
                 <div>
