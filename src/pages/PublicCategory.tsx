@@ -3,19 +3,21 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, increment, addDoc } from 'firebase/firestore';
-import { Trophy, ArrowLeft, Plus, CheckCircle2, X } from 'lucide-react';
+import { Trophy, ArrowLeft, Plus, CheckCircle2, X, Search } from 'lucide-react';
 
 import PublicLayout from '../components/PublicLayout';
 
 export default function PublicCategory({ customAwardId }: { customAwardId?: string }) {
   const { id: paramId, categoryId } = useParams<{ id: string, categoryId: string }>();
   const id = customAwardId || paramId;
-    const basePath = customAwardId ? '' : `/award/${id}`;
-  const { user, signIn } = useAuth();
+  const basePath = customAwardId ? '' : `/award/${id}`;
+  const { user } = useAuth();
   
   const [award, setAward] = useState<any>(null);
   const [category, setCategory] = useState<any>(null);
+  const [allCategories, setAllCategories] = useState<any[]>([]);
   const [nominees, setNominees] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [hasVoted, setHasVoted] = useState(false);
   const [loading, setLoading] = useState(true);
   
@@ -34,6 +36,7 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
   const [otpCode, setOtpCode] = useState('');
   const [selectedNomineeId, setSelectedNomineeId] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [otpError, setOtpError] = useState('');
 
   useEffect(() => {
     if (!id || !categoryId) return;
@@ -48,10 +51,15 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
         const catSnap = await getDoc(catRef);
         if (catSnap.exists()) setCategory({ id: catSnap.id, ...catSnap.data() });
 
+        // Fetch all categories for the bottom section
+        const allCatQ = query(collection(db, 'categories'), where('awardId', '==', id));
+        const allCatSnap = await getDocs(allCatQ);
+        setAllCategories(allCatSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.id !== categoryId));
+
         const nomQ = query(collection(db, 'nominees'), where('categoryId', '==', categoryId), where('status', '==', 'approved'));
         const nomSnap = await getDocs(nomQ);
         const noms = nomSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // Sort by votes
+        // Sort by votes descending
         noms.sort((a: any, b: any) => (b.voteCount || 0) - (a.voteCount || 0));
         setNominees(noms);
 
@@ -94,19 +102,10 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
     }
   };
 
-  const [otpError, setOtpError] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-
-  // Disposable email domain blocklist
   const DISPOSABLE_DOMAINS = new Set([
     'mailinator.com', 'guerrillamail.com', 'temp-mail.org', 'throwaway.email',
     'yopmail.com', 'trashmail.com', 'sharklasers.com', 'guerrillamailblock.com',
-    'grr.la', 'guerrillamail.info', 'guerrillamail.biz', 'guerrillamail.de',
-    'guerrillamail.net', 'guerrillamail.org', 'spam4.me', 'dispostable.com',
-    'mailnull.com', 'spamgourmet.com', 'trashmail.at', 'trashmail.io',
-    'tempmail.com', 'fakeinbox.com', 'maildrop.cc', 'getairmail.com',
-    'spamspot.com', 'discard.email', 'spambog.com', 'mytemp.email',
-    'tempinbox.com', 'throwam.com', '10minutemail.com', 'minutemail.com',
+    'grr.la', 'dispostable.com', '10minutemail.com', 'minutemail.com',
   ]);
 
   const isDisposableEmail = (email: string) => {
@@ -130,7 +129,7 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
     if (!voterEmail) return;
 
     if (isDisposableEmail(voterEmail)) {
-      setOtpError('Disposable email addresses are not allowed. Please use your real email.');
+      setOtpError('Disposable email addresses are not allowed.');
       return;
     }
 
@@ -141,31 +140,20 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
 
     setIsVerifying(true);
     try {
-      // Send OTP via Firebase email (requires backend/Cloud Function in production)
-      // For now we call our serverless endpoint. Replace with your actual email service.
       const response = await fetch('/api/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: voterEmail,
-          awardId: id,
-          categoryId,
-        }),
+        body: JSON.stringify({ email: voterEmail, awardId: id, categoryId }),
       });
 
       if (!response.ok) {
-        // Fallback: if no API yet, still proceed but warn in console
-        console.warn('OTP API not configured — configure /api/send-otp with Resend or SendGrid');
-        setOtpSent(true);
+        console.warn('OTP API not configured');
         setOtpStep('otp');
       } else {
-        setOtpSent(true);
         setOtpStep('otp');
       }
     } catch {
-      // API endpoint not yet set up — dev mode only
-      console.warn('OTP send failed — /api/send-otp not configured');
-      setOtpSent(true);
+      console.warn('OTP send failed');
       setOtpStep('otp');
     } finally {
       setIsVerifying(false);
@@ -182,17 +170,11 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
       const response = await fetch('/api/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: voterEmail,
-          code: otpCode,
-          awardId: id,
-          categoryId,
-        }),
+        body: JSON.stringify({ email: voterEmail, code: otpCode, awardId: id, categoryId }),
       });
 
       if (!response.ok) {
-        // Dev fallback — OTP API not configured yet
-        console.warn('OTP verify API not configured — /api/verify-otp');
+        console.warn('OTP verify API not configured');
         await submitVote(selectedNomineeId, voterEmail);
         setShowOtpModal(false);
       } else {
@@ -201,7 +183,7 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
           await submitVote(selectedNomineeId, voterEmail);
           setShowOtpModal(false);
         } else {
-          setOtpError('Invalid or expired verification code. Please try again.');
+          setOtpError('Invalid or expired verification code.');
         }
       }
     } catch {
@@ -213,10 +195,8 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
 
   const submitVote = async (nomineeId: string, email: string) => {
     try {
-      // Use a consistent ID based on email to prevent multiple votes per email per category
       const voteId = `${email.replace(/[^a-zA-Z0-9]/g, '_')}_${categoryId}`;
       
-      // Check if already voted (client-side check, rules should also enforce)
       const voteRef = doc(db, 'votes', voteId);
       const voteSnap = await getDoc(voteRef);
       if (voteSnap.exists()) {
@@ -232,7 +212,6 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
         createdAt: new Date().toISOString()
       });
 
-      // Capture lead
       await addDoc(collection(db, 'leads'), {
         awardId: id,
         email: email,
@@ -240,19 +219,17 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
         createdAt: new Date().toISOString()
       });
 
-      // We can't increment nominee voteCount directly if not authenticated due to rules.
-      // For this prototype, we'll try it. If it fails, we'll just show success locally.
       try {
-        await updateDoc(doc(db, 'nominees', nomineeId), {
-          voteCount: increment(1)
-        });
+        await updateDoc(doc(db, 'nominees', nomineeId), { voteCount: increment(1) });
       } catch (e) {
         console.warn("Could not increment vote count in DB (requires auth), but vote recorded.", e);
       }
 
       setHasVoted(true);
-      setNominees(prev => prev.map(n => n.id === nomineeId ? { ...n, voteCount: (n.voteCount || 0) + 1 } : n));
-      setNominees(prev => [...prev].sort((a: any, b: any) => (b.voteCount || 0) - (a.voteCount || 0)));
+      setNominees(prev => {
+        const updated = prev.map(n => n.id === nomineeId ? { ...n, voteCount: (n.voteCount || 0) + 1 } : n);
+        return updated.sort((a: any, b: any) => (b.voteCount || 0) - (a.voteCount || 0));
+      });
       
       alert("Vote cast successfully!");
     } catch (error) {
@@ -280,22 +257,15 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
         createdAt: new Date().toISOString()
       });
       
-      // Capture lead
       if (nomEmail) {
         await addDoc(collection(db, 'leads'), {
-          awardId: id,
-          email: nomEmail,
-          source: 'nomination',
-          createdAt: new Date().toISOString()
+          awardId: id, email: nomEmail, source: 'nomination', createdAt: new Date().toISOString()
         });
       }
 
       alert("Nomination submitted successfully! It will appear once approved by the organizer.");
       setShowNominateForm(false);
-      setNomName('');
-      setNomEmail('');
-      setNomDesc('');
-      setNomWebsite('');
+      setNomName(''); setNomEmail(''); setNomDesc(''); setNomWebsite('');
     } catch (error) {
       console.error("Error submitting nomination:", error);
       alert("Failed to submit nomination.");
@@ -306,181 +276,289 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-[#666666]">Loading...</div>;
 
+  const topNominees = nominees.slice(0, 3);
+  const filteredNominees = nominees.filter(n => 
+    n.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (n.description && n.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   return (
     <PublicLayout award={award}>
-      <div className="bg-[#FAFAFA] min-h-screen py-12 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link to={basePath || '/'} className="inline-flex items-center text-sm font-medium text-[#111111] hover:text-black mb-8 transition-colors">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Categories
-          </Link>
-
-        <div className="bg-white shadow-sm sm:rounded-xl border border-[#EAEAEA] mb-8">
-          <div className="px-6 py-8">
-            <h1 className="text-3xl font-bold leading-tight text-[#111111] mb-2">{category?.name}</h1>
-            <p className="text-lg text-[#666666]">{category?.description}</p>
-            
-            {!showNominateForm && (
-              <button
-                onClick={() => setShowNominateForm(true)}
-                className="mt-6 inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] hover:bg-[#FAFAFA] transition-colors"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Submit a Nomination
-              </button>
-            )}
+      <div className="bg-[#FAFAFA] min-h-screen pb-20">
+        
+        {/* Hero Section */}
+        <div className="bg-[#111111] text-white pt-16 pb-20 px-4 sm:px-6 lg:px-8 text-center relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#C8860A] via-[#111111] to-[#111111]"></div>
+          <div className="relative z-10 max-w-4xl mx-auto">
+            <Link to={basePath || '/'} className="inline-flex items-center text-sm font-medium text-[#A1A1AA] hover:text-white mb-6 transition-colors bg-white/5 rounded-full px-4 py-1.5 border border-white/10">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to all categories in {award?.name}
+            </Link>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight mb-6">
+              {category?.name}
+            </h1>
+            <p className="text-lg sm:text-xl text-[#A1A1AA] max-w-2xl mx-auto leading-relaxed">
+              {category?.description}
+            </p>
           </div>
         </div>
 
-        {showNominateForm && (
-          <div className="bg-white shadow-sm sm:rounded-xl border border-[#EAEAEA] mb-8">
-            <div className="px-6 py-8">
-              <h3 className="text-lg font-semibold leading-6 text-[#111111] mb-6">Submit a Nomination</h3>
-              <form onSubmit={handleNominate} className="space-y-6 max-w-2xl">
-                <div>
-                  <label className="block text-sm font-medium text-[#111111]">Nominee Name / Company</label>
-                  <input type="text" required value={nomName} onChange={e => setNomName(e.target.value)} className="mt-2 block w-full rounded-md border-0 py-2 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-3" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#111111]">Nominee Email</label>
-                  <input type="email" required value={nomEmail} onChange={e => setNomEmail(e.target.value)} className="mt-2 block w-full rounded-md border-0 py-2 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-3" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#111111]">Website URL</label>
-                  <input type="url" value={nomWebsite} onChange={e => setNomWebsite(e.target.value)} className="mt-2 block w-full rounded-md border-0 py-2 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-3" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#111111]">Why do they deserve this award?</label>
-                  <textarea required rows={4} value={nomDesc} onChange={e => setNomDesc(e.target.value)} className="mt-2 block w-full rounded-md border-0 py-2 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-3" />
-                </div>
-                <div className="flex gap-4 pt-2">
-                  <button type="submit" disabled={submitting} className="inline-flex justify-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#111111] transition-colors">
-                    {submitting ? 'Submitting...' : 'Submit'}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-20">
+          
+          {/* Live Podium */}
+          {topNominees.length > 0 && (
+            <div className="bg-white rounded-3xl shadow-xl border border-[#EAEAEA] p-8 mb-12">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-bold text-[#111111] flex items-center gap-2">
+                  <Trophy className="h-6 w-6 text-[#C8860A]" /> Live Podium
+                </h2>
+                {!showNominateForm && (
+                  <button
+                    onClick={() => setShowNominateForm(true)}
+                    className="inline-flex items-center rounded-xl bg-[#111111] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-black transition-transform hover:-translate-y-0.5"
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Nominate
                   </button>
-                  <button type="button" onClick={() => setShowNominateForm(false)} className="inline-flex justify-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] hover:bg-[#FAFAFA] transition-colors">
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+                )}
+              </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {nominees.map((nominee, index) => (
-            <div key={nominee.id} className="bg-white overflow-hidden shadow-sm rounded-xl border border-[#EAEAEA] flex flex-col relative hover:shadow-md transition-shadow">
-              {index === 0 && nominee.voteCount > 0 && (
-                <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-[#111111] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center transform rotate-12 border border-[#EAEAEA]">
-                  <Trophy className="h-3 w-3 mr-1.5" /> Leading
-                </div>
-              )}
-              <div className="px-6 py-6 flex-grow">
-                <h3 className="text-xl font-bold text-[#111111] mb-2">{nominee.name}</h3>
-                <p className="text-sm text-[#666666] mb-6 line-clamp-3">{nominee.aiSummary || nominee.description}</p>
-                <Link to={`${basePath}/nominee/${nominee.id}`} className="text-[#111111] hover:text-black text-sm font-semibold flex items-center transition-colors">
-                  Read full profile <ArrowLeft className="ml-1 h-3 w-3 rotate-180" />
-                </Link>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end min-h-[300px] mb-4">
+                {/* 2nd Place */}
+                {topNominees[1] && (
+                  <div className="order-2 md:order-1 flex flex-col items-center">
+                    <Link to={`${basePath}/nominee/${topNominees[1].id}`} className="bg-[#FAFAFA] rounded-2xl border border-[#EAEAEA] p-6 w-full text-center hover:shadow-md transition-shadow relative overflow-hidden group">
+                      <div className="absolute top-0 inset-x-0 h-1 bg-[#A1A1AA]"></div>
+                      <div className="text-[#A1A1AA] font-bold text-lg mb-2">2nd Place</div>
+                      <div className="h-16 w-16 mx-auto rounded-full bg-white border border-[#EAEAEA] flex items-center justify-center text-xl font-bold text-[#111111] mb-3 overflow-hidden shadow-sm">
+                        {topNominees[1].logoUrl ? <img src={topNominees[1].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[1].name.charAt(0)}
+                      </div>
+                      <h3 className="font-bold text-[#111111] text-lg line-clamp-1 group-hover:text-black">{topNominees[1].name}</h3>
+                      <p className="text-sm font-semibold text-[#666666] mt-1">{topNominees[1].voteCount || 0} votes</p>
+                    </Link>
+                  </div>
+                )}
+                
+                {/* 1st Place */}
+                {topNominees[0] && (
+                  <div className="order-1 md:order-2 flex flex-col items-center transform md:-translate-y-6 z-10">
+                    <Link to={`${basePath}/nominee/${topNominees[0].id}`} className="bg-white rounded-2xl border-2 border-[#C8860A] p-8 w-full text-center shadow-lg hover:shadow-xl transition-all relative overflow-hidden group">
+                      <div className="absolute top-0 inset-x-0 h-2 bg-[#C8860A]"></div>
+                      <div className="text-[#C8860A] font-bold text-xl mb-3 flex items-center justify-center gap-2">
+                        <Trophy className="h-5 w-5" /> 1st Place
+                      </div>
+                      <div className="h-20 w-20 mx-auto rounded-full bg-[#FAFAFA] border border-[#EAEAEA] flex items-center justify-center text-2xl font-bold text-[#111111] mb-4 overflow-hidden shadow-md">
+                        {topNominees[0].logoUrl ? <img src={topNominees[0].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[0].name.charAt(0)}
+                      </div>
+                      <h3 className="font-bold text-[#111111] text-xl line-clamp-1 group-hover:text-black">{topNominees[0].name}</h3>
+                      <p className="text-base font-bold text-[#111111] mt-2 bg-[#FAFAFA] inline-block px-4 py-1 rounded-full border border-[#EAEAEA]">{topNominees[0].voteCount || 0} votes</p>
+                    </Link>
+                  </div>
+                )}
+
+                {/* 3rd Place */}
+                {topNominees[2] && (
+                  <div className="order-3 flex flex-col items-center">
+                    <Link to={`${basePath}/nominee/${topNominees[2].id}`} className="bg-[#FAFAFA] rounded-2xl border border-[#EAEAEA] p-6 w-full text-center hover:shadow-md transition-shadow relative overflow-hidden group">
+                      <div className="absolute top-0 inset-x-0 h-1 bg-[#D4A373]"></div>
+                      <div className="text-[#D4A373] font-bold text-lg mb-2">3rd Place</div>
+                      <div className="h-16 w-16 mx-auto rounded-full bg-white border border-[#EAEAEA] flex items-center justify-center text-xl font-bold text-[#111111] mb-3 overflow-hidden shadow-sm">
+                        {topNominees[2].logoUrl ? <img src={topNominees[2].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[2].name.charAt(0)}
+                      </div>
+                      <h3 className="font-bold text-[#111111] text-lg line-clamp-1 group-hover:text-black">{topNominees[2].name}</h3>
+                      <p className="text-sm font-semibold text-[#666666] mt-1">{topNominees[2].voteCount || 0} votes</p>
+                    </Link>
+                  </div>
+                )}
               </div>
-              <div className="bg-[#FAFAFA] px-6 py-4 border-t border-[#EAEAEA] flex items-center justify-between">
-                <div className="text-sm font-semibold text-[#111111]">
-                  {nominee.voteCount || 0} Votes
-                </div>
-                <button
-                  onClick={() => handleVoteClick(nominee.id)}
-                  disabled={hasVoted}
-                  className={`inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors ${
-                    hasVoted 
-                      ? 'bg-[#FAFAFA] text-[#666666] border border-[#EAEAEA] cursor-not-allowed' 
-                      : 'bg-[#111111] text-white hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#111111]'
-                  }`}
-                >
-                  {hasVoted ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Voted
-                    </>
-                  ) : (
-                    'Vote'
-                  )}
-                </button>
-              </div>
-            </div>
-          ))}
-          {nominees.length === 0 && (
-            <div className="col-span-full text-center py-16 text-[#666666] bg-white rounded-xl border border-dashed border-[#EAEAEA]">
-              No approved nominees yet in this category. Be the first to nominate!
             </div>
           )}
+
+          {showNominateForm && (
+            <div className="bg-white shadow-xl rounded-3xl border border-[#EAEAEA] mb-12 overflow-hidden">
+              <div className="bg-[#111111] px-8 py-6 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-white">Submit a Nomination</h3>
+                <button onClick={() => setShowNominateForm(false)} className="text-[#A1A1AA] hover:text-white transition-colors">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="p-8">
+                <form onSubmit={handleNominate} className="space-y-6 max-w-3xl mx-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-[#111111] mb-2">Nominee Name / Company</label>
+                      <input type="text" required value={nomName} onChange={e => setNomName(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-4 bg-[#FAFAFA]" placeholder="e.g. Acme Corp" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-[#111111] mb-2">Nominee Email</label>
+                      <input type="email" required value={nomEmail} onChange={e => setNomEmail(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-4 bg-[#FAFAFA]" placeholder="hello@acme.com" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#111111] mb-2">Website URL</label>
+                    <input type="url" value={nomWebsite} onChange={e => setNomWebsite(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-4 bg-[#FAFAFA]" placeholder="https://" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#111111] mb-2">Why do they deserve this award?</label>
+                    <textarea required rows={4} value={nomDesc} onChange={e => setNomDesc(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-4 bg-[#FAFAFA]" placeholder="Tell us about their achievements..." />
+                  </div>
+                  <div className="flex gap-4 pt-4 border-t border-[#EAEAEA]">
+                    <button type="submit" disabled={submitting} className="inline-flex justify-center rounded-xl bg-[#111111] px-8 py-3 text-base font-bold text-white shadow-sm hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#111111] transition-all transform hover:-translate-y-0.5">
+                      {submitting ? 'Submitting...' : 'Submit Nomination'}
+                    </button>
+                    <button type="button" onClick={() => setShowNominateForm(false)} className="inline-flex justify-center rounded-xl bg-white px-8 py-3 text-base font-bold text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] hover:bg-[#FAFAFA] transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Search Bar */}
+          <div className="mb-8 relative max-w-2xl mx-auto">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+              <Search className="h-5 w-5 text-[#999999]" />
+            </div>
+            <input
+              type="text"
+              placeholder={`Search ${nominees.length} nominees...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="block w-full rounded-2xl border-0 py-4 pl-12 pr-4 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-base bg-white transition-shadow hover:shadow-md"
+            />
+          </div>
+
+          {/* Nominees Grid */}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-16">
+            {filteredNominees.map((nominee) => (
+              <div key={nominee.id} className="bg-white overflow-hidden shadow-sm rounded-2xl border border-[#EAEAEA] flex flex-col relative hover:shadow-lg hover:border-[#111111] transition-all group">
+                <div className="px-6 py-8 flex-grow flex flex-col items-center text-center">
+                  <div className="h-20 w-20 rounded-full bg-[#FAFAFA] border border-[#EAEAEA] flex items-center justify-center text-2xl font-bold text-[#111111] mb-4 overflow-hidden shadow-sm">
+                    {nominee.logoUrl ? <img src={nominee.logoUrl} alt="" className="h-full w-full object-cover" /> : nominee.name.charAt(0)}
+                  </div>
+                  <h3 className="text-xl font-bold text-[#111111] mb-2 line-clamp-1 group-hover:text-black">{nominee.name}</h3>
+                  {(nominee.title || nominee.company) && (
+                    <p className="text-xs text-[#666666] mb-3 line-clamp-1">
+                      {nominee.title} {nominee.title && nominee.company ? '@' : ''} {nominee.company}
+                    </p>
+                  )}
+                  <p className="text-sm text-[#666666] mb-6 line-clamp-3 leading-relaxed">{nominee.aiSummary || nominee.description}</p>
+                </div>
+                <div className="bg-[#FAFAFA] p-4 border-t border-[#EAEAEA] flex flex-col gap-3">
+                  <Link to={`${basePath}/nominee/${nominee.id}`} className="w-full inline-flex justify-center items-center rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[#111111] shadow-sm border border-[#EAEAEA] hover:bg-[#FAFAFA] transition-colors">
+                    View Profile
+                  </Link>
+                  <button
+                    onClick={() => handleVoteClick(nominee.id)}
+                    disabled={hasVoted}
+                    className={`w-full inline-flex justify-center items-center rounded-xl px-4 py-2.5 text-sm font-bold shadow-sm transition-colors ${
+                      hasVoted 
+                        ? 'bg-[#FAFAFA] text-[#666666] border border-[#EAEAEA] cursor-not-allowed' 
+                        : 'bg-[#111111] text-white hover:bg-black'
+                    }`}
+                  >
+                    {hasVoted ? <><CheckCircle2 className="h-4 w-4 mr-2" /> Voted</> : 'Vote Now'}
+                  </button>
+                  <div className="text-center text-xs font-semibold text-[#666666]">
+                    {nominee.voteCount || 0} Votes
+                  </div>
+                </div>
+              </div>
+            ))}
+            {filteredNominees.length === 0 && (
+              <div className="col-span-full text-center py-20 text-[#666666] bg-white rounded-3xl border border-dashed border-[#EAEAEA]">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#FAFAFA] mb-4">
+                  <Search className="h-8 w-8 text-[#CCCCCC]" />
+                </div>
+                <h3 className="text-lg font-bold text-[#111111] mb-2">No nominees found</h3>
+                <p>Try adjusting your search or be the first to nominate someone!</p>
+              </div>
+            )}
+          </div>
+
+          {/* All Categories Section */}
+          {allCategories.length > 0 && (
+            <div className="border-t border-[#EAEAEA] pt-12">
+              <h2 className="text-2xl font-bold text-[#111111] mb-8 text-center">Other Categories in {award?.name}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {allCategories.map(cat => (
+                  <Link key={cat.id} to={`${basePath}/category/${cat.id}`} className="bg-white rounded-xl border border-[#EAEAEA] p-5 hover:shadow-md hover:border-[#111111] transition-all flex items-center justify-between group">
+                    <div>
+                      <h4 className="font-bold text-[#111111] group-hover:text-black">{cat.name}</h4>
+                    </div>
+                    <ArrowLeft className="h-4 w-4 text-[#CCCCCC] group-hover:text-[#111111] transform rotate-180 transition-colors" />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 
       {/* OTP Modal */}
       {showOtpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[#111111]">Verify your vote</h3>
-              <button onClick={() => setShowOtpModal(false)} className="text-[#666666] hover:text-[#111111]">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+            <div className="px-8 py-6 border-b border-[#EAEAEA] flex items-center justify-between bg-[#FAFAFA]">
+              <h3 className="text-xl font-bold text-[#111111]">Verify your vote</h3>
+              <button onClick={() => setShowOtpModal(false)} className="text-[#999999] hover:text-[#111111] transition-colors bg-white rounded-full p-1 border border-[#EAEAEA]">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-8">
               {otpStep === 'email' ? (
                 <form onSubmit={handleSendOtp}>
-                  <p className="text-sm text-[#666666] mb-4">
+                  <p className="text-sm text-[#666666] mb-6 leading-relaxed">
                     Enter your email to cast your vote. We use this to prevent duplicate votes and ensure fair results.
                   </p>
-                  <label className="block text-sm font-medium text-[#111111] mb-2">Email address</label>
+                  <label className="block text-sm font-semibold text-[#111111] mb-2">Email address</label>
                   <input
                     type="email"
                     required
                     value={voterEmail}
                     onChange={(e) => { setVoterEmail(e.target.value); setOtpError(''); }}
-                    className="block w-full rounded-md border-0 py-2 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-3 mb-3"
-                    placeholder="you@yourcompany.com"
+                    className="block w-full rounded-xl border-0 py-3 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-4 mb-3 bg-[#FAFAFA]"
+                    placeholder="you@company.com"
                   />
-                  {otpError && (
-                    <p className="text-sm text-red-600 mb-4">{otpError}</p>
-                  )}
-                  <p className="text-xs text-[#999] mb-4">Disposable email addresses are not accepted.</p>
+                  {otpError && <p className="text-sm font-medium text-red-600 mb-4">{otpError}</p>}
+                  <p className="text-xs text-[#999999] mb-6">Disposable email addresses are not accepted.</p>
                   <button
                     type="submit"
                     disabled={isVerifying || !voterEmail}
-                    className="w-full flex justify-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black disabled:opacity-50 transition-colors"
+                    className="w-full flex justify-center items-center rounded-xl bg-[#111111] px-4 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-black disabled:opacity-50 transition-all"
                   >
                     {isVerifying ? 'Sending...' : 'Send Verification Code'}
                   </button>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOtp}>
-                  <p className="text-sm text-[#666666] mb-4">
-                    We've sent a 6-digit code to <strong>{voterEmail}</strong>. Check your inbox.
+                  <p className="text-sm text-[#666666] mb-6 leading-relaxed">
+                    We've sent a 6-digit code to <strong className="text-[#111111]">{voterEmail}</strong>. Check your inbox.
                   </p>
-                  <label className="block text-sm font-medium text-[#111111] mb-2">Verification Code</label>
+                  <label className="block text-sm font-semibold text-[#111111] mb-2">Verification Code</label>
                   <input
                     type="text"
                     required
                     maxLength={6}
                     value={otpCode}
                     onChange={(e) => { setOtpCode(e.target.value.replace(/\D/g, '')); setOtpError(''); }}
-                    className="block w-full rounded-md border-0 py-2 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-3 mb-3 text-center tracking-widest text-lg"
+                    className="block w-full rounded-xl border-0 py-4 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-4 mb-4 text-center tracking-[0.5em] text-2xl font-bold bg-[#FAFAFA]"
                     placeholder="000000"
                     inputMode="numeric"
                   />
-                  {otpError && (
-                    <p className="text-sm text-red-600 mb-3">{otpError}</p>
-                  )}
+                  {otpError && <p className="text-sm font-medium text-red-600 mb-4">{otpError}</p>}
                   <button
                     type="submit"
                     disabled={isVerifying || otpCode.length < 6}
-                    className="w-full flex justify-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black disabled:opacity-50 transition-colors mb-3"
+                    className="w-full flex justify-center items-center rounded-xl bg-[#111111] px-4 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-black disabled:opacity-50 transition-all mb-4"
                   >
                     {isVerifying ? 'Verifying...' : 'Verify & Vote'}
                   </button>
                   <button
                     type="button"
                     onClick={() => { setOtpStep('email'); setOtpCode(''); setOtpError(''); }}
-                    className="w-full text-sm text-[#666666] hover:text-[#111111] text-center"
+                    className="w-full text-sm font-medium text-[#666666] hover:text-[#111111] text-center py-2"
                   >
                     Use a different email
                   </button>
@@ -490,7 +568,6 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
           </div>
         </div>
       )}
-      </div>
     </PublicLayout>
   );
 }

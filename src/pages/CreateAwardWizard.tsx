@@ -57,7 +57,7 @@ const questions: Array<{
   {
     id: 'name',
     eyebrow: 'Campaign Name',
-    title: 'What should this campaign be called?',
+    title: 'What should this award be called?',
     helper: 'Use a short name that looks strong on landing pages, share cards, and emails.'
   },
   {
