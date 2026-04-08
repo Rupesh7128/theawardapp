@@ -4,9 +4,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { db, storage } from '../lib/firebase';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Settings, List, Users, Sparkles, Upload, Globe, BarChart, Download, CreditCard, Check, Code, Link as LinkIcon, Plus, Minus, Edit, Award, X } from 'lucide-react';
+import { Settings, List, Users, Sparkles, Upload, Globe, BarChart, Download, CreditCard, Check, Code, Link as LinkIcon, Plus, Minus, Edit, Award, X, PieChart as PieChartIcon } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import Papa from 'papaparse';
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 // Helper to prevent infinite hangs if Firebase Storage is not enabled
 const uploadWithTimeout = async (storageRef: any, file: File, timeoutMs = 15000) => {
@@ -342,6 +343,15 @@ export default function ManageAward() {
     }
   };
 
+  const topNomineesData = useMemo(() => {
+    return [...nominees]
+      .sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0))
+      .slice(0, 5)
+      .map(n => ({ name: n.name, votes: n.voteCount || 0 }));
+  }, [nominees]);
+
+  const COLORS = ['#d97757', '#6a9bcc', '#788c5d', '#b0aea5', '#141413'];
+
   if (loading) return <div className="p-8 text-center text-[#666666]">Loading...</div>;
 
   return (
@@ -424,6 +434,17 @@ export default function ManageAward() {
           >
             <Award className="h-4 w-4 mr-2" />
             Certificates & Badges
+          </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`${
+              activeTab === 'analytics'
+                ? 'border-[#111111] text-[#111111]'
+                : 'border-transparent text-[#666666] hover:border-[#EAEAEA] hover:text-[#111111]'
+            } whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium flex items-center transition-colors`}
+          >
+            <PieChartIcon className="h-4 w-4 mr-2" />
+            Analytics
           </button>
           <button
             onClick={() => setActiveTab('billing')}
@@ -1124,8 +1145,6 @@ Jane Smith,jane@test.com,Best Marketer,CMO,Test Inc,,</pre>
                 </div>
               </div>
             )}
-          </div>
-        )}
 
         {activeTab === 'leads' && (
           <div className="px-6 py-8">
@@ -1164,6 +1183,54 @@ Jane Smith,jane@test.com,Best Marketer,CMO,Test Inc,,</pre>
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'analytics' && (
+          <div className="px-6 py-8">
+            <h3 className="text-lg font-semibold text-anthropic-dark font-sans mb-6">Campaign Analytics</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Top Nominees Chart */}
+              <div className="bg-white p-6 rounded-2xl border border-anthropic-lightGray shadow-sm">
+                <h4 className="font-semibold text-anthropic-dark mb-4">Top Nominees by Votes</h4>
+                {topNomineesData.length > 0 ? (
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsBarChart data={topNomineesData}>
+                        <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip cursor={{ fill: '#f5f5f5' }} />
+                        <Bar dataKey="votes" fill="#d97757" radius={[4, 4, 0, 0]} />
+                      </RechartsBarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-64 flex items-center justify-center text-gray-500">
+                    No vote data available yet.
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Stats */}
+              <div className="bg-white p-6 rounded-2xl border border-anthropic-lightGray shadow-sm flex flex-col justify-center">
+                <h4 className="font-semibold text-anthropic-dark mb-6">Overview</h4>
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Total Categories</p>
+                    <p className="text-3xl font-semibold text-anthropic-dark">{categories.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Total Nominees</p>
+                    <p className="text-3xl font-semibold text-anthropic-dark">{nominees.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Total Leads Captured</p>
+                    <p className="text-3xl font-semibold text-anthropic-dark">{leads.length}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
