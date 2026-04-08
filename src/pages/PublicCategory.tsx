@@ -287,8 +287,8 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
       <div className="bg-[#FAFAFA] min-h-screen pb-20">
         
         {/* Hero Section */}
-        <div className="bg-[#111111] text-white pt-16 pb-20 px-4 sm:px-6 lg:px-8 text-center relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#C8860A] via-[#111111] to-[#111111]"></div>
+        <div className="text-white pt-16 pb-20 px-4 sm:px-6 lg:px-8 text-center relative overflow-hidden" style={{ backgroundColor: category?.backgroundColor || '#111111' }}>
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#C8860A] via-transparent to-transparent"></div>
           <div className="relative z-10 max-w-4xl mx-auto">
             <Link to={basePath || '/'} className="inline-flex items-center text-sm font-medium text-[#A1A1AA] hover:text-white mb-6 transition-colors bg-white/5 rounded-full px-4 py-1.5 border border-white/10">
               <ArrowLeft className="mr-2 h-4 w-4" />

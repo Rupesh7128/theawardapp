@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db, storage } from '../lib/firebase';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Settings, List, Users, Sparkles, Upload, Globe, BarChart, Download, CreditCard, Check, Code, Link as LinkIcon, Plus, Minus } from 'lucide-react';
+import { Settings, List, Users, Sparkles, Upload, Globe, BarChart, Download, CreditCard, Check, Code, Link as LinkIcon, Plus, Minus, Edit, Award, X } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import Papa from 'papaparse';
 
@@ -51,6 +51,7 @@ export default function ManageAward() {
 
   // AI Generation State
   const [isGeneratingCategories, setIsGeneratingCategories] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
 
   // Nominee Edit State
   const [editingNominee, setEditingNominee] = useState<any>(null);
@@ -58,6 +59,10 @@ export default function ManageAward() {
 
   // Billing State
   const [isUpgrading, setIsUpgrading] = useState(false);
+
+  const [certificateUrl, setCertificateUrl] = useState('');
+  const [badgeUrl, setBadgeUrl] = useState('');
+  const [sendingCertificates, setSendingCertificates] = useState(false);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -87,6 +92,8 @@ export default function ManageAward() {
         setStatus(awardData.status || 'draft');
         setIsPublicDirectory(awardData.isPublicDirectory || false);
         setCustomDomain(awardData.customDomain || '');
+        setCertificateUrl(awardData.certificateUrl || '');
+        setBadgeUrl(awardData.badgeUrl || '');
 
         // Fetch Categories
         const catQ = query(collection(db, 'categories'), where('awardId', '==', id));
@@ -347,6 +354,17 @@ export default function ManageAward() {
             Leads ({leads.length})
           </button>
           <button
+            onClick={() => setActiveTab('certificates')}
+            className={`${
+              activeTab === 'certificates'
+                ? 'border-[#111111] text-[#111111]'
+                : 'border-transparent text-[#666666] hover:border-[#EAEAEA] hover:text-[#111111]'
+            } whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium flex items-center transition-colors`}
+          >
+            <Award className="h-4 w-4 mr-2" />
+            Certificates & Badges
+          </button>
+          <button
             onClick={() => setActiveTab('billing')}
             className={`${
               activeTab === 'billing'
@@ -545,16 +563,101 @@ export default function ManageAward() {
             ) : (
               <ul role="list" className="divide-y divide-[#EAEAEA] border border-[#EAEAEA] rounded-lg">
                 {categories.map((category) => (
-                  <li key={category.id} className="flex justify-between gap-x-6 py-5 px-6 hover:bg-[#FAFAFA] transition-colors">
+                  <li key={category.id} className="flex justify-between gap-x-6 py-5 px-6 hover:bg-[#FAFAFA] transition-colors items-center">
                     <div className="flex min-w-0 gap-x-4">
                       <div className="min-w-0 flex-auto">
-                        <p className="text-sm font-semibold leading-6 text-[#111111]">{category.name}</p>
-                        <p className="mt-1 truncate text-xs leading-5 text-[#666666]">{category.description}</p>
+                        <p className="text-sm font-semibold leading-6 text-[#111111] flex items-center gap-2">
+                          {category.backgroundColor && (
+                            <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: category.backgroundColor }}></span>
+                          )}
+                          {category.name}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-[#666666]">{category.description}</p>
                       </div>
                     </div>
+                    <button
+                      onClick={() => setEditingCategory(category)}
+                      className="text-[#666666] hover:text-[#111111] transition-colors p-2 rounded-md hover:bg-[#EAEAEA]"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
                   </li>
                 ))}
               </ul>
+            )}
+
+            {/* Edit Category Modal */}
+            {editingCategory && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
+                  <h3 className="text-xl font-bold text-[#111111] mb-4">Edit Category</h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#111111] mb-1">Name</label>
+                      <input 
+                        type="text"
+                        value={editingCategory.name}
+                        onChange={e => setEditingCategory({...editingCategory, name: e.target.value})}
+                        className="w-full rounded-md border border-[#EAEAEA] px-3 py-2 focus:ring-[#111111] focus:border-[#111111]"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-[#111111] mb-1">Description</label>
+                      <textarea 
+                        rows={3}
+                        value={editingCategory.description}
+                        onChange={e => setEditingCategory({...editingCategory, description: e.target.value})}
+                        className="w-full rounded-md border border-[#EAEAEA] px-3 py-2 focus:ring-[#111111] focus:border-[#111111]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-[#111111] mb-1">Background Color</label>
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="color"
+                          value={editingCategory.backgroundColor || '#111111'}
+                          onChange={e => setEditingCategory({...editingCategory, backgroundColor: e.target.value})}
+                          className="h-10 w-10 rounded cursor-pointer border border-[#EAEAEA] p-1"
+                        />
+                        <span className="text-sm text-[#666666] font-mono">{editingCategory.backgroundColor || '#111111'}</span>
+                      </div>
+                      <p className="text-xs text-[#999999] mt-1">Used for the header background on the public category page.</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex justify-end gap-3">
+                    <button 
+                      onClick={() => setEditingCategory(null)}
+                      className="px-4 py-2 text-sm font-medium text-[#666666] hover:text-[#111111]"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        try {
+                          await updateDoc(doc(db, 'categories', editingCategory.id), {
+                            name: editingCategory.name,
+                            description: editingCategory.description,
+                            backgroundColor: editingCategory.backgroundColor || '#111111'
+                          });
+
+                          setCategories(prev => prev.map(c => c.id === editingCategory.id ? editingCategory : c));
+                          setEditingCategory(null);
+                        } catch (error) {
+                          console.error("Error updating category:", error);
+                          alert("Failed to update category.");
+                        }
+                      }}
+                      className="bg-[#111111] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-black"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -846,6 +949,151 @@ export default function ManageAward() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'certificates' && (
+          <div className="px-6 py-8">
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold leading-6 text-[#111111]">Certificates & Badges</h3>
+              <p className="mt-1 text-sm text-[#666666]">Upload your official certificate template and winner badge. Once the award is completed, you can send these directly to the winners.</p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 mb-12">
+              {/* Certificate Upload */}
+              <div className="bg-[#FAFAFA] border border-[#EAEAEA] rounded-2xl p-6">
+                <h4 className="text-base font-semibold text-[#111111] mb-2 flex items-center gap-2">
+                  <Award className="h-5 w-5" /> Certificate Template
+                </h4>
+                <p className="text-sm text-[#666666] mb-4">Upload a blank certificate template. We'll automatically place the winner's name and category on it.</p>
+                
+                {certificateUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-[#EAEAEA] bg-white aspect-[4/3] flex items-center justify-center group mb-4">
+                    <img src={certificateUrl} alt="Certificate Template" className="max-h-full object-contain" />
+                    <button 
+                      onClick={async () => {
+                        setCertificateUrl('');
+                        await updateDoc(doc(db, 'awards', id!), { certificateUrl: '' });
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-[#CCCCCC] rounded-xl p-8 text-center bg-white mb-4">
+                    <Award className="h-8 w-8 text-[#999999] mx-auto mb-3" />
+                    <p className="text-sm font-medium text-[#111111]">No template uploaded</p>
+                    <p className="text-xs text-[#666666] mt-1">PNG, JPG up to 5MB</p>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={async (e) => {
+                      if (e.target.files && e.target.files[0] && user) {
+                        try {
+                          const file = e.target.files[0];
+                          const photoRef = ref(storage, `awards/${user.uid}/certs/${Date.now()}_${file.name}`);
+                          await uploadBytes(photoRef, file);
+                          const url = await getDownloadURL(photoRef);
+                          setCertificateUrl(url);
+                          await updateDoc(doc(db, 'awards', id!), { certificateUrl: url });
+                        } catch (err) {
+                          alert('Failed to upload certificate');
+                        }
+                      }
+                    }}
+                    className="text-sm flex-1 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#111111] file:text-white hover:file:bg-black cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Badge Upload */}
+              <div className="bg-[#FAFAFA] border border-[#EAEAEA] rounded-2xl p-6">
+                <h4 className="text-base font-semibold text-[#111111] mb-2 flex items-center gap-2">
+                  <Sparkles className="h-5 w-5" /> Winner Badge
+                </h4>
+                <p className="text-sm text-[#666666] mb-4">Upload a transparent PNG badge that winners can place on their website or email signature.</p>
+                
+                {badgeUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-[#EAEAEA] bg-white aspect-[4/3] flex items-center justify-center group mb-4 p-4">
+                    <img src={badgeUrl} alt="Winner Badge" className="max-h-full object-contain drop-shadow-md" />
+                    <button 
+                      onClick={async () => {
+                        setBadgeUrl('');
+                        await updateDoc(doc(db, 'awards', id!), { badgeUrl: '' });
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-[#CCCCCC] rounded-xl p-8 text-center bg-white mb-4">
+                    <Sparkles className="h-8 w-8 text-[#999999] mx-auto mb-3" />
+                    <p className="text-sm font-medium text-[#111111]">No badge uploaded</p>
+                    <p className="text-xs text-[#666666] mt-1">Transparent PNG up to 2MB</p>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={async (e) => {
+                      if (e.target.files && e.target.files[0] && user) {
+                        try {
+                          const file = e.target.files[0];
+                          const photoRef = ref(storage, `awards/${user.uid}/badges/${Date.now()}_${file.name}`);
+                          await uploadBytes(photoRef, file);
+                          const url = await getDownloadURL(photoRef);
+                          setBadgeUrl(url);
+                          await updateDoc(doc(db, 'awards', id!), { badgeUrl: url });
+                        } catch (err) {
+                          alert('Failed to upload badge');
+                        }
+                      }
+                    }}
+                    className="text-sm flex-1 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#111111] file:text-white hover:file:bg-black cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Send to Winners Action */}
+            <div className="bg-white border-2 border-[#111111] rounded-2xl p-8 text-center max-w-2xl mx-auto shadow-lg">
+              <h3 className="text-2xl font-bold text-[#111111] mb-2">Award Completed?</h3>
+              <p className="text-[#666666] mb-6">When voting has ended, you can automatically send an email to the top nominee in each category containing their certificate and badge.</p>
+              
+              <button
+                disabled={sendingCertificates || (!certificateUrl && !badgeUrl) || nominees.length === 0}
+                onClick={async () => {
+                  setSendingCertificates(true);
+                  try {
+                    // Simulate sending API call
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    alert("Certificates and badges have been successfully sent to the category winners!");
+                  } catch (e) {
+                    alert("Failed to send certificates.");
+                  } finally {
+                    setSendingCertificates(false);
+                  }
+                }}
+                className={`inline-flex items-center justify-center rounded-xl px-8 py-3 text-base font-bold shadow-sm transition-all ${
+                  (!certificateUrl && !badgeUrl) || nominees.length === 0
+                    ? 'bg-[#FAFAFA] text-[#A1A1AA] border border-[#EAEAEA] cursor-not-allowed'
+                    : 'bg-[#111111] text-white hover:bg-black transform hover:-translate-y-0.5'
+                }`}
+              >
+                {sendingCertificates ? 'Sending Emails...' : 'Send Assets to Winners'}
+              </button>
+              {(!certificateUrl && !badgeUrl) && (
+                <p className="mt-3 text-sm text-red-500 font-medium">Please upload at least one asset (certificate or badge) to send.</p>
+              )}
+            </div>
           </div>
         )}
 

@@ -303,14 +303,15 @@ export default function CreateAwardWizard() {
         }
       });
 
-      for (const category of categories) {
-        await addDoc(collection(db, 'categories'), {
+      // Save categories in parallel for speed
+      await Promise.all(categories.map(category => 
+        addDoc(collection(db, 'categories'), {
           awardId: awardRef.id,
           name: category.name,
           description: category.description,
           status: 'published'
-        });
-      }
+        })
+      ));
 
       setAwardId(awardRef.id);
     } catch (error) {
