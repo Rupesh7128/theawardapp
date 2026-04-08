@@ -216,7 +216,7 @@ export default function CreateAwardWizard() {
         }
       });
 
-      const generated = JSON.parse(response.text);
+      const generated = JSON.parse(response.text || '[]');
       if (generated.name) setName(generated.name);
       if (generated.description) setDescription(generated.description);
       if (Array.isArray(generated.categories) && generated.categories.length > 0) {
@@ -257,7 +257,7 @@ export default function CreateAwardWizard() {
         }
       });
 
-      const generated = JSON.parse(response.text);
+      const generated = JSON.parse(response.text || '{}');
       setCategories(
         generated.map((entry: Category) => ({
           name: entry.name,
@@ -283,9 +283,19 @@ export default function CreateAwardWizard() {
     try {
       let logoUrl = '';
       if (logoFile) {
-        const logoRef = ref(storage, `awards/${user.uid}/${Date.now()}_${logoFile.name}`);
-        await uploadBytes(logoRef, logoFile);
-        logoUrl = await getDownloadURL(logoRef);
+        try {
+          const logoRef = ref(storage, `awards/${user.uid}/${Date.now()}_${logoFile.name}`);
+          // Add a 15-second timeout for the upload to prevent infinite hangs if Firebase Storage isn't configured
+          await Promise.race([
+            uploadBytes(logoRef, logoFile),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Storage upload timeout')), 15000))
+          ]);
+          logoUrl = await getDownloadURL(logoRef);
+        } catch (uploadError) {
+          console.error('Logo upload failed:', uploadError);
+          alert('Logo upload failed (timeout or permission error). Your Firebase Storage bucket might not be enabled in the console. The award will be published without the logo.');
+          // Proceed without logo
+        }
       }
 
       const awardRef = await addDoc(collection(db, 'awards'), {

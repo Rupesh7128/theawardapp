@@ -8,6 +8,14 @@ import { Settings, List, Users, Sparkles, Upload, Globe, BarChart, Download, Cre
 import { GoogleGenAI } from '@google/genai';
 import Papa from 'papaparse';
 
+// Helper to prevent infinite hangs if Firebase Storage is not enabled
+const uploadWithTimeout = async (storageRef: any, file: File, timeoutMs = 15000) => {
+  return Promise.race([
+    uploadBytes(storageRef, file),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Storage upload timeout')), timeoutMs))
+  ]);
+};
+
 export default function ManageAward() {
   const { id } = useParams<{ id: string }>();
   const { user, billingBypass } = useAuth();
@@ -25,6 +33,9 @@ export default function ManageAward() {
   const [award, setAward] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [nominees, setNominees] = useState<any[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [showImportGuide, setShowImportGuide] = useState(false);
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('settings');
@@ -193,50 +204,100 @@ export default function ManageAward() {
     const file = e.target.files?.[0];
     if (!file || !id) return;
 
+    setImporting(true);
+    setImportErrors([]);
+
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
         const rows = results.data as any[];
         let addedCount = 0;
-        for (const row of rows) {
-          if (row.name && row.email && row.categoryName) {
-            const cat = categories.find(c => c.name.toLowerCase() === row.categoryName.toLowerCase());
-            if (cat) {
-              try {
-                const docRef = await addDoc(collection(db, 'nominees'), {
-                  awardId: id,
-                  categoryId: cat.id,
-                  name: row.name,
-                  email: row.email,
-                  description: row.description || '',
-                  website: row.website || '',
-                  logoUrl: '',
-                  aiSummary: '',
-                  status: 'approved',
-                  voteCount: 0,
-                  submittedBy: user?.uid,
-                  createdAt: new Date().toISOString()
-                });
-                setNominees(prev => [...prev, {
-                  id: docRef.id,
-                  awardId: id,
-                  categoryId: cat.id,
-                  name: row.name,
-                  email: row.email,
-                  description: row.description || '',
-                  website: row.website || '',
-                  status: 'approved',
-                  voteCount: 0
-                }]);
-                addedCount++;
-              } catch (err) {
-                console.error("Error adding nominee:", err);
-              }
-            }
+        const errors: string[] = [];
+
+        // Validate headers first
+        if (rows.length > 0) {
+          const headers = Object.keys(rows[0]).map(h => h.toLowerCase().trim());
+          const required = ['name', 'email', 'categoryname'];
+          const missing = required.filter(r => !headers.includes(r));
+          if (missing.length > 0) {
+            setImportErrors([`CSV is missing required columns: ${missing.join(', ')}. Please use exact column names.`]);
+            setImporting(false);
+            e.target.value = '';
+            return;
           }
         }
-        alert(`Successfully imported ${addedCount} nominees!`);
+
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          
+          // Normalize row keys (case-insensitive)
+          const normalizedRow: any = {};
+          Object.keys(row).forEach(key => {
+            normalizedRow[key.toLowerCase().trim()] = row[key];
+          });
+
+          const nomName = normalizedRow.name?.trim();
+          const nomEmail = normalizedRow.email?.trim();
+          const catName = normalizedRow.categoryname?.trim();
+          
+          if (!nomName || !nomEmail || !catName) {
+            errors.push(`Row ${i + 2}: Missing required data (name, email, or categoryName)`);
+            continue;
+          }
+
+          const cat = categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
+          if (!cat) {
+            errors.push(`Row ${i + 2}: Category "${catName}" not found in this award`);
+            continue;
+          }
+
+          try {
+            const docRef = await addDoc(collection(db, 'nominees'), {
+              awardId: id,
+              categoryId: cat.id,
+              name: nomName,
+              email: nomEmail,
+              description: normalizedRow.description?.trim() || '',
+              website: normalizedRow.website?.trim() || '',
+              title: normalizedRow.title?.trim() || '',
+              company: normalizedRow.company?.trim() || '',
+              logoUrl: '',
+              aiSummary: '',
+              status: 'approved',
+              voteCount: 0,
+              submittedBy: user?.uid,
+              createdAt: new Date().toISOString()
+            });
+            
+            setNominees(prev => [...prev, {
+              id: docRef.id,
+              awardId: id,
+              categoryId: cat.id,
+              name: nomName,
+              email: nomEmail,
+              description: normalizedRow.description?.trim() || '',
+              website: normalizedRow.website?.trim() || '',
+              title: normalizedRow.title?.trim() || '',
+              company: normalizedRow.company?.trim() || '',
+              status: 'approved',
+              voteCount: 0
+            }]);
+            addedCount++;
+          } catch (err) {
+            errors.push(`Row ${i + 2}: Database error saving nominee`);
+          }
+        }
+        
+        if (errors.length > 0) {
+          setImportErrors(errors);
+        }
+        
+        if (addedCount > 0) {
+          alert(`Successfully imported ${addedCount} nominees!`);
+        }
+        
+        setImporting(false);
         e.target.value = '';
       }
     });
@@ -432,7 +493,7 @@ export default function ManageAward() {
                       if (e.target.files && e.target.files[0] && user) {
                         const file = e.target.files[0];
                         const photoRef = ref(storage, `awards/${user.uid}/${Date.now()}_${file.name}`);
-                        await uploadBytes(photoRef, file);
+                        await uploadWithTimeout(photoRef, file);
                         const url = await getDownloadURL(photoRef);
                         setLogoUrl(url);
                       }
@@ -541,6 +602,70 @@ export default function ManageAward() {
                 </button>
               </div>
             </form>
+            {/* Import Guide Modal */}
+            {showImportGuide && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-[#111111]">CSV Import Guide</h3>
+                    <button onClick={() => setShowImportGuide(false)} className="text-[#666666] hover:text-[#111111]">
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-6 text-sm text-[#444444]">
+                    <p>To bulk import nominees, your CSV file must have a header row with specific column names. The system is case-insensitive, so "Name" or "name" will both work.</p>
+                    
+                    <div>
+                      <h4 className="font-bold text-[#111111] mb-2 text-base">Required Columns:</h4>
+                      <ul className="list-disc pl-5 space-y-2">
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">name</code>: The nominee's full name or company name.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">email</code>: A valid contact email.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">categoryName</code>: Must exactly match one of your existing category names (e.g. "Best CRM").</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-[#111111] mb-2 text-base">Optional Columns:</h4>
+                      <ul className="list-disc pl-5 space-y-2">
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">title</code>: The person's job title (e.g. "CEO").</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">company</code>: Their company name.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">description</code>: A brief bio or reason for nomination.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">website</code>: A link to their portfolio or company site.</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-[#FAFAFA] border border-[#EAEAEA] rounded-lg p-4 overflow-x-auto">
+                      <p className="font-semibold text-[#111111] mb-2">Example CSV Format:</p>
+                      <pre className="text-xs">name,email,categoryName,title,company,description,website
+John Doe,john@acme.com,Best CEO,Founder,Acme Corp,Grew revenue 300%.,https://acme.com
+Jane Smith,jane@test.com,Best Marketer,CMO,Test Inc,,</pre>
+                    </div>
+
+                    <div className="flex justify-end pt-4">
+                      <button
+                        onClick={() => {
+                          const csvContent = "name,email,categoryName,title,company,description,website\nJohn Doe,john@example.com,Best Category,CEO,Acme Corp,Great leader.,https://example.com";
+                          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                          const link = document.createElement("a");
+                          const url = URL.createObjectURL(blob);
+                          link.setAttribute("href", url);
+                          link.setAttribute("download", "nominees_template.csv");
+                          link.style.visibility = 'hidden';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="inline-flex items-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black transition-colors"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download Template
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -668,6 +793,12 @@ export default function ManageAward() {
               <h3 className="text-lg font-semibold leading-6 text-[#111111]">Nominees</h3>
               <div className="flex items-center gap-3">
                 <button
+                  onClick={() => setShowImportGuide(true)}
+                  className="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] hover:bg-gray-50 transition-colors"
+                >
+                  Format Guide
+                </button>
+                <button
                   onClick={async () => {
                     if (window.confirm("Are you sure you want to approve all pending nominees?")) {
                       const pendingNominees = nominees.filter(n => n.status === 'pending');
@@ -692,14 +823,31 @@ export default function ManageAward() {
                     title="Upload CSV (columns: name, email, categoryName, description, website)"
                   />
                   <button
-                    className="inline-flex items-center rounded-md bg-[#FAFAFA] px-4 py-2 text-sm font-semibold text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] hover:bg-gray-50 transition-colors"
+                    disabled={importing}
+                    className="inline-flex items-center rounded-md bg-[#FAFAFA] px-4 py-2 text-sm font-semibold text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    Bulk Upload CSV
+                    {importing ? 'Importing...' : 'Bulk Upload CSV'}
                   </button>
                 </div>
               </div>
             </div>
+
+            {importErrors.length > 0 && (
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex justify-between items-start">
+                  <h4 className="text-sm font-semibold text-red-800 mb-2">Import Errors ({importErrors.length})</h4>
+                  <button onClick={() => setImportErrors([])} className="text-red-500 hover:text-red-700">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <ul className="list-disc pl-5 text-xs text-red-700 space-y-1 max-h-32 overflow-y-auto">
+                  {importErrors.map((err, idx) => (
+                    <li key={idx}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             
             {nominees.length === 0 ? (
               <div className="text-center py-12 text-[#666666] border border-dashed border-[#EAEAEA] rounded-lg">No nominees yet. Share your public link to get nominations!</div>
@@ -820,10 +968,77 @@ export default function ManageAward() {
               </div>
             )}
 
-            {/* Edit Nominee Modal */}
-            {editingNominee && (
+            {/* Import Guide Modal */}
+            {showImportGuide && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+                <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-[#111111]">CSV Import Guide</h3>
+                    <button onClick={() => setShowImportGuide(false)} className="text-[#666666] hover:text-[#111111]">
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-6 text-sm text-[#444444]">
+                    <p>To bulk import nominees, your CSV file must have a header row with specific column names. The system is case-insensitive, so "Name" or "name" will both work.</p>
+                    
+                    <div>
+                      <h4 className="font-bold text-[#111111] mb-2 text-base">Required Columns:</h4>
+                      <ul className="list-disc pl-5 space-y-2">
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">name</code>: The nominee's full name or company name.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">email</code>: A valid contact email.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">categoryName</code>: Must exactly match one of your existing category names (e.g. "Best CRM").</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-[#111111] mb-2 text-base">Optional Columns:</h4>
+                      <ul className="list-disc pl-5 space-y-2">
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">title</code>: The person's job title (e.g. "CEO").</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">company</code>: Their company name.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">description</code>: A brief bio or reason for nomination.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">website</code>: A link to their portfolio or company site.</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-[#FAFAFA] border border-[#EAEAEA] rounded-lg p-4 overflow-x-auto">
+                      <p className="font-semibold text-[#111111] mb-2">Example CSV Format:</p>
+                      <pre className="text-xs">name,email,categoryName,title,company,description,website
+John Doe,john@acme.com,Best CEO,Founder,Acme Corp,Grew revenue 300%.,https://acme.com
+Jane Smith,jane@test.com,Best Marketer,CMO,Test Inc,,</pre>
+                    </div>
+
+                    <div className="flex justify-end pt-4">
+                      <button
+                        onClick={() => {
+                          const csvContent = "name,email,categoryName,title,company,description,website\nJohn Doe,john@example.com,Best Category,CEO,Acme Corp,Great leader.,https://example.com";
+                          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                          const link = document.createElement("a");
+                          const url = URL.createObjectURL(blob);
+                          link.setAttribute("href", url);
+                          link.setAttribute("download", "nominees_template.csv");
+                          link.style.visibility = 'hidden';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="inline-flex items-center rounded-md bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black transition-colors"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download Template
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Edit Nominee Modal */}
+        {editingNominee && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
                   <h3 className="text-xl font-bold text-[#111111] mb-4">Edit Nominee: {editingNominee.name}</h3>
                   
                   <div className="space-y-4">
@@ -883,7 +1098,7 @@ export default function ManageAward() {
                           let logoUrl = editingNominee.logoUrl;
                           if (nomineePhotoFile && user) {
                             const photoRef = ref(storage, `nominees/${user.uid}/${Date.now()}_${nomineePhotoFile.name}`);
-                            await uploadBytes(photoRef, nomineePhotoFile);
+                            await uploadWithTimeout(photoRef, nomineePhotoFile);
                             logoUrl = await getDownloadURL(photoRef);
                           }
 
@@ -997,7 +1212,7 @@ export default function ManageAward() {
                         try {
                           const file = e.target.files[0];
                           const photoRef = ref(storage, `awards/${user.uid}/certs/${Date.now()}_${file.name}`);
-                          await uploadBytes(photoRef, file);
+                          await uploadWithTimeout(photoRef, file);
                           const url = await getDownloadURL(photoRef);
                           setCertificateUrl(url);
                           await updateDoc(doc(db, 'awards', id!), { certificateUrl: url });
@@ -1048,7 +1263,7 @@ export default function ManageAward() {
                         try {
                           const file = e.target.files[0];
                           const photoRef = ref(storage, `awards/${user.uid}/badges/${Date.now()}_${file.name}`);
-                          await uploadBytes(photoRef, file);
+                          await uploadWithTimeout(photoRef, file);
                           const url = await getDownloadURL(photoRef);
                           setBadgeUrl(url);
                           await updateDoc(doc(db, 'awards', id!), { badgeUrl: url });
