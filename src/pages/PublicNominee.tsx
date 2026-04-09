@@ -299,8 +299,8 @@ export default function PublicNominee({ customAwardId }: { customAwardId?: strin
             className="relative z-10 w-full max-w-4xl mx-auto px-6 flex flex-col items-center text-center"
           >
             <motion.div variants={itemVariants} className="w-full flex justify-start mb-8">
-              <Link to={`${basePath}/category/${nominee.categoryId}`} className="inline-flex items-center text-xs font-bold uppercase tracking-widest text-anthropic-midGray hover:text-anthropic-orange transition-colors bg-white px-4 py-2 rounded-full shadow-sm border border-anthropic-lightGray">
-                <ArrowLeft className="mr-2 h-4 w-4" />
+              <Link to={`${basePath}/category/${nominee.categoryId}`} className="inline-flex items-center text-sm font-bold tracking-widest uppercase text-[#999999] hover:text-[#111111] transition-colors bg-white rounded-full px-6 py-2.5 border-2 border-[#EAEAEA] shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+                <ArrowLeft className="mr-3 h-4 w-4" />
                 Back to {category?.name || 'Category'}
               </Link>
             </motion.div>

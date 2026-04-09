@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, increment, addDoc } from 'firebase/firestore';
 import { Trophy, ArrowLeft, Plus, CheckCircle2, X, Search } from 'lucide-react';
+import { format } from 'date-fns';
 
 import PublicLayout from '../components/PublicLayout';
 import MultiStepNominationForm from '../components/MultiStepNominationForm';
@@ -250,9 +251,9 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
         <div className="text-white pt-16 pb-20 px-4 sm:px-6 lg:px-8 text-center relative overflow-hidden" style={{ backgroundColor: category?.backgroundColor || '#111111' }}>
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#C8860A] via-transparent to-transparent"></div>
           <div className="relative z-10 max-w-4xl mx-auto">
-            <Link to={basePath || '/'} className="inline-flex items-center text-sm font-medium text-[#A1A1AA] hover:text-white mb-6 transition-colors bg-white/5 rounded-full px-4 py-1.5 border border-white/10">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to all categories in {award?.name}
+            <Link to={basePath || '/'} className="inline-flex items-center text-sm font-bold tracking-widest uppercase text-[#999999] hover:text-[#111111] mb-6 transition-colors bg-white rounded-full px-6 py-2.5 border-2 border-[#EAEAEA] shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+              <ArrowLeft className="mr-3 h-4 w-4" />
+              Back to {award?.name || 'All Categories'}
             </Link>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight mb-6">
               {category?.name}
@@ -260,6 +261,26 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
             <p className="text-lg sm:text-xl text-[#A1A1AA] max-w-2xl mx-auto leading-relaxed">
               {category?.description}
             </p>
+            <div className="mt-8 flex flex-wrap justify-center items-center gap-6 text-sm font-semibold tracking-widest uppercase text-white/80">
+              {award?.nominationEndDate && (
+                <div className="flex flex-col items-center bg-black/20 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10">
+                  <span className="text-[10px] mb-1 opacity-70">Nominations Close</span>
+                  <span>{format(new Date(award.nominationEndDate), 'MMM d, yyyy - h:mm a')}</span>
+                </div>
+              )}
+              {award?.votingStartDate && (
+                <div className="flex flex-col items-center bg-black/20 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10">
+                  <span className="text-[10px] mb-1 opacity-70">Voting Starts</span>
+                  <span>{format(new Date(award.votingStartDate), 'MMM d, yyyy - h:mm a')}</span>
+                </div>
+              )}
+              {award?.votingEndDate && (
+                <div className="flex flex-col items-center bg-black/20 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10">
+                  <span className="text-[10px] mb-1 opacity-70">Voting Closes</span>
+                  <span>{format(new Date(award.votingEndDate), 'MMM d, yyyy - h:mm a')}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -284,7 +305,10 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
 
               <div className="flex flex-col md:flex-row items-end justify-center gap-4 lg:gap-6 min-h-[300px] mb-4 font-sans relative">
                 {/* Ambient glow */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[200px] bg-gradient-to-b from-transparent via-anthropic-orange/5 to-transparent blur-[50px] pointer-events-none -z-10"></div>
+                <div 
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[300px] blur-[80px] pointer-events-none -z-10 opacity-20"
+                  style={{ background: `radial-gradient(ellipse at center, ${category?.backgroundColor || '#C8860A'} 0%, transparent 70%)` }}
+                ></div>
 
                 {/* 2nd Place */}
                 {topNominees[1] && (
@@ -293,13 +317,18 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
                     className="w-full md:w-1/3 order-2 md:order-1 group relative flex flex-col justify-end h-[85%]"
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-gray-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl -z-10"></div>
-                    <div className="text-center mb-6 px-4 transition-transform duration-500 group-hover:-translate-y-2">
-                      <div className="h-16 w-16 mx-auto rounded-full bg-white border-4 border-gray-300 flex items-center justify-center text-xl font-bold text-anthropic-dark mb-3 overflow-hidden shadow-lg relative">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-gray-400/30 to-transparent pointer-events-none z-10 mix-blend-overlay"></div>
-                        {topNominees[1].logoUrl ? <img src={topNominees[1].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[1].name.charAt(0)}
+                    <div className="text-center mb-6 px-4 transition-transform duration-500 group-hover:-translate-y-2 flex flex-col items-center">
+                      <div className="relative mb-2">
+                        <div className="h-24 w-24 rounded-full bg-white border border-[#EAEAEA] flex items-center justify-center text-2xl font-bold text-[#111111] overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.06)] z-10 relative">
+                          {topNominees[1].logoUrl ? <img src={topNominees[1].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[1].name.charAt(0)}
+                        </div>
+                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20">
+                          <div className="bg-[#C8860A] text-white border-2 border-white px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase shadow-md whitespace-nowrap flex items-center gap-1.5">
+                            <Trophy className="h-3 w-3" /> {topNominees[1].voteCount || 0} Votes
+                          </div>
+                        </div>
                       </div>
-                      <h3 className="font-bold text-anthropic-dark text-lg line-clamp-1">{topNominees[1].name}</h3>
-                      <p className="text-xs font-bold uppercase tracking-widest text-gray-500 bg-gray-100 inline-block px-3 py-1 rounded-full shadow-inner mt-2">{topNominees[1].voteCount || 0} votes</p>
+                      <h3 className="font-bold text-[#111111] text-lg mt-3 line-clamp-1">{topNominees[1].name}</h3>
                     </div>
                     <div className="w-full bg-gradient-to-t from-gray-100 to-white border-t-8 border-gray-300 rounded-t-[24px] h-32 flex items-start justify-center pt-6 relative overflow-hidden shadow-[0_-5px_20px_rgba(0,0,0,0.03)] transition-all duration-500 group-hover:shadow-[0_-10px_30px_rgba(0,0,0,0.06)]">
                       <div className="absolute inset-0 bg-gradient-to-b from-white/50 to-transparent pointer-events-none"></div>
@@ -315,16 +344,18 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
                     className="w-full md:w-1/3 order-1 md:order-2 group relative z-20 flex flex-col justify-end h-full"
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-anthropic-orange/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl -z-10"></div>
-                    <div className="text-center mb-6 px-4 transition-transform duration-500 group-hover:-translate-y-4">
-                      <div className="flex justify-center mb-3">
-                        <Trophy className="h-8 w-8 text-[#FFD700] drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]" />
+                    <div className="text-center mb-6 px-4 transition-transform duration-500 group-hover:-translate-y-4 flex flex-col items-center">
+                      <div className="relative mb-2">
+                        <div className="h-32 w-32 rounded-full bg-white border border-[#EAEAEA] flex items-center justify-center text-4xl font-bold text-[#111111] overflow-hidden shadow-[0_15px_50px_rgba(0,0,0,0.08)] z-10 relative">
+                          {topNominees[0].logoUrl ? <img src={topNominees[0].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[0].name.charAt(0)}
+                        </div>
+                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20">
+                          <div className="bg-[#C8860A] text-white border-2 border-white px-5 py-1.5 rounded-full text-sm font-bold tracking-widest uppercase shadow-md whitespace-nowrap flex items-center gap-1.5">
+                            <Trophy className="h-4 w-4" /> {topNominees[0].voteCount || 0} Votes
+                          </div>
+                        </div>
                       </div>
-                      <div className="h-20 w-20 mx-auto rounded-full bg-white border-[5px] border-[#FFD700] flex items-center justify-center text-2xl font-bold text-anthropic-orange mb-4 overflow-hidden shadow-[0_10px_30px_rgba(255,215,0,0.3)] relative">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-[#FFD700]/30 to-transparent pointer-events-none z-10 mix-blend-overlay"></div>
-                        {topNominees[0].logoUrl ? <img src={topNominees[0].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[0].name.charAt(0)}
-                      </div>
-                      <h3 className="font-extrabold text-anthropic-dark text-xl line-clamp-1">{topNominees[0].name}</h3>
-                      <p className="text-xs font-black uppercase tracking-widest text-white bg-gradient-to-r from-anthropic-orange to-[#FFD700] inline-block px-4 py-1.5 rounded-full shadow-md mt-2">{topNominees[0].voteCount || 0} votes</p>
+                      <h3 className="font-extrabold text-[#111111] text-2xl mt-4 line-clamp-1">{topNominees[0].name}</h3>
                     </div>
                     <div className="w-full bg-anthropic-dark rounded-t-[32px] h-40 flex items-start justify-center pt-8 relative overflow-hidden shadow-[0_-10px_30px_rgba(0,0,0,0.15)] transition-all duration-500 group-hover:shadow-[0_-20px_40px_rgba(200,134,10,0.25)]">
                       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 mix-blend-overlay pointer-events-none"></div>
@@ -341,13 +372,18 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
                     className="w-full md:w-1/3 order-3 flex flex-col justify-end h-[75%] group relative"
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-[#CD7F32]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl -z-10"></div>
-                    <div className="text-center mb-6 px-4 transition-transform duration-500 group-hover:-translate-y-2">
-                      <div className="h-14 w-14 mx-auto rounded-full bg-white border-4 border-[#CD7F32]/80 flex items-center justify-center text-lg font-bold text-anthropic-dark mb-3 overflow-hidden shadow-lg relative">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-[#CD7F32]/30 to-transparent pointer-events-none z-10 mix-blend-overlay"></div>
-                        {topNominees[2].logoUrl ? <img src={topNominees[2].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[2].name.charAt(0)}
+                    <div className="text-center mb-6 px-4 transition-transform duration-500 group-hover:-translate-y-2 flex flex-col items-center">
+                      <div className="relative mb-2">
+                        <div className="h-20 w-20 rounded-full bg-white border border-[#EAEAEA] flex items-center justify-center text-xl font-bold text-[#111111] overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.06)] z-10 relative">
+                          {topNominees[2].logoUrl ? <img src={topNominees[2].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[2].name.charAt(0)}
+                        </div>
+                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20">
+                          <div className="bg-[#C8860A] text-white border-2 border-white px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-md whitespace-nowrap flex items-center gap-1">
+                            <Trophy className="h-3 w-3" /> {topNominees[2].voteCount || 0} Votes
+                          </div>
+                        </div>
                       </div>
-                      <h3 className="font-bold text-anthropic-dark text-lg line-clamp-1">{topNominees[2].name}</h3>
-                      <p className="text-xs font-bold uppercase tracking-widest text-[#CD7F32] bg-[#CD7F32]/10 inline-block px-3 py-1 rounded-full shadow-inner mt-2">{topNominees[2].voteCount || 0} votes</p>
+                      <h3 className="font-bold text-[#111111] text-base mt-3 line-clamp-1">{topNominees[2].name}</h3>
                     </div>
                     <div className="w-full bg-gradient-to-t from-gray-100 to-white border-t-8 border-[#CD7F32]/80 rounded-t-[24px] h-24 flex items-start justify-center pt-5 relative overflow-hidden shadow-[0_-5px_20px_rgba(0,0,0,0.03)] transition-all duration-500 group-hover:shadow-[0_-10px_30px_rgba(205,127,50,0.1)]">
                       <div className="absolute inset-0 bg-gradient-to-b from-white/50 to-transparent pointer-events-none"></div>
@@ -390,37 +426,38 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
           {/* Nominees Grid */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-16">
             {filteredNominees.map((nominee) => (
-              <div key={nominee.id} className="bg-white overflow-hidden shadow-sm rounded-2xl border border-anthropic-lightGray flex flex-col relative hover:shadow-lg hover:border-anthropic-dark transition-all group font-sans">
-                <div className="px-6 py-8 flex-grow flex flex-col items-center text-center">
-                  <div className="h-20 w-20 rounded-full bg-anthropic-light border border-anthropic-lightGray flex items-center justify-center text-2xl font-bold text-anthropic-dark mb-4 overflow-hidden shadow-sm">
-                    {nominee.logoUrl ? <img src={nominee.logoUrl} alt="" className="h-full w-full object-cover" /> : nominee.name.charAt(0)}
-                  </div>
-                  <h3 className="text-xl font-bold text-anthropic-dark mb-2 line-clamp-1 group-hover:text-black">{nominee.name}</h3>
-                  {(nominee.title || nominee.company) && (
-                    <p className="text-xs text-anthropic-midGray mb-3 line-clamp-1">
-                      {nominee.title} {nominee.title && nominee.company ? '@' : ''} {nominee.company}
-                    </p>
-                  )}
-                  <p className="text-sm text-anthropic-midGray mb-6 line-clamp-3 leading-relaxed font-serif">{nominee.aiSummary || nominee.description}</p>
+              <div key={nominee.id} className="bg-white rounded-[2rem] border border-[#EAEAEA] flex flex-col items-center p-8 hover:shadow-[0_20px_40px_rgba(0,0,0,0.04)] hover:border-[#111111]/20 transition-all duration-300 group h-full">
+                <div className="h-24 w-24 rounded-full bg-[#FAFAFA] border border-[#EAEAEA] flex items-center justify-center text-2xl font-bold text-[#111111] mb-6 overflow-hidden shadow-sm group-hover:scale-105 transition-transform duration-300">
+                  {nominee.logoUrl ? <img src={nominee.logoUrl} alt="" className="h-full w-full object-cover" /> : nominee.name.charAt(0)}
                 </div>
-                <div className="bg-anthropic-light p-4 border-t border-anthropic-lightGray flex flex-col gap-3">
-                  <Link to={`${basePath}/nominee/${nominee.id}`} className="w-full inline-flex justify-center items-center rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-anthropic-dark shadow-sm border border-anthropic-lightGray hover:bg-gray-50 transition-colors">
+                
+                <h3 className="text-xl font-bold text-[#111111] mb-3 text-center line-clamp-1">{nominee.name}</h3>
+                
+                <p className="text-sm text-[#999999] text-center mb-8 line-clamp-3 font-serif leading-relaxed flex-grow">
+                  {nominee.aiSummary || nominee.description || 'No description provided.'}
+                </p>
+
+                <div className="w-full flex flex-col gap-3 mt-auto">
+                  <div className="inline-flex justify-center items-center bg-[#FAFAFA] px-4 py-2 rounded-full text-xs font-bold tracking-widest uppercase text-[#111111] border border-[#EAEAEA] mx-auto">
+                    {nominee.voteCount || 0} Votes
+                  </div>
+                  <Link 
+                    to={`${basePath}/nominee/${nominee.id}`} 
+                    className="w-full inline-flex justify-center items-center rounded-xl bg-white px-4 py-3 text-sm font-bold text-[#111111] shadow-sm border border-[#EAEAEA] group-hover:bg-[#111111] group-hover:text-white group-hover:border-[#111111] transition-colors"
+                  >
                     View Profile
                   </Link>
                   <button
                     onClick={() => handleVoteClick(nominee.id)}
                     disabled={hasVoted}
-                    className={`w-full inline-flex justify-center items-center rounded-xl px-4 py-2.5 text-sm font-bold shadow-sm transition-colors ${
+                    className={`w-full inline-flex justify-center items-center rounded-xl px-4 py-3 text-sm font-bold shadow-sm transition-colors ${
                       hasVoted 
-                        ? 'bg-anthropic-light text-anthropic-midGray border border-anthropic-lightGray cursor-not-allowed' 
-                        : 'bg-anthropic-dark text-anthropic-light hover:opacity-90'
+                        ? 'bg-[#FAFAFA] text-[#A1A1AA] border border-[#EAEAEA] cursor-not-allowed' 
+                        : 'bg-[#C8860A] text-white hover:opacity-90'
                     }`}
                   >
                     {hasVoted ? <><CheckCircle2 className="h-4 w-4 mr-2" /> Voted</> : 'Vote Now'}
                   </button>
-                  <div className="text-center text-xs font-semibold text-anthropic-midGray">
-                    {nominee.voteCount || 0} Votes
-                  </div>
                 </div>
               </div>
             ))}
