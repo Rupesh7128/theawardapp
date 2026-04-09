@@ -7,7 +7,16 @@
   --color-background: #FFFFFF;
   --color-accent: #C8860A;
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-anthropic-dark: #141413;
+  --color-anthropic-light: #faf9f5;
+  --color-anthropic-midGray: #b0aea5;
+  --color-anthropic-lightGray: #e8e6dc;
+  --color-anthropic-orange: #d97757;
+  --color-anthropic-blue: #6a9bcc;
+  --color-anthropic-green: #788c5d;
+
+  --font-sans: "Poppins", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Lora", ui-serif, Georgia, serif;
 }
 
 @layer base {

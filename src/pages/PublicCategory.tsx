@@ -309,31 +309,31 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
           {topNominees.length > 0 && (
             <div className="bg-white rounded-3xl shadow-xl border border-[#EAEAEA] p-8 mb-12">
               <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-[#111111] flex items-center gap-2">
-                  <Trophy className="h-6 w-6 text-[#C8860A]" /> Live Podium
+                <h2 className="text-2xl font-bold text-anthropic-dark flex items-center gap-2 font-sans">
+                  <Trophy className="h-6 w-6 text-anthropic-orange" /> Live Podium
                 </h2>
                 {!showNominateForm && (
                   <button
                     onClick={() => setShowNominateForm(true)}
-                    className="inline-flex items-center rounded-xl bg-[#111111] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-black transition-transform hover:-translate-y-0.5"
+                    className="inline-flex items-center rounded-xl bg-anthropic-dark px-5 py-2.5 text-sm font-semibold text-anthropic-light shadow-sm hover:opacity-90 transition-transform hover:-translate-y-0.5 font-sans"
                   >
                     <Plus className="h-4 w-4 mr-2" /> Nominate
                   </button>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end min-h-[300px] mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end min-h-[300px] mb-4 font-sans">
                 {/* 2nd Place */}
                 {topNominees[1] && (
                   <div className="order-2 md:order-1 flex flex-col items-center">
-                    <Link to={`${basePath}/nominee/${topNominees[1].id}`} className="bg-[#FAFAFA] rounded-2xl border border-[#EAEAEA] p-6 w-full text-center hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <Link to={`${basePath}/nominee/${topNominees[1].id}`} className="bg-anthropic-light rounded-2xl border border-anthropic-lightGray p-6 w-full text-center hover:shadow-md hover:border-anthropic-dark transition-all relative overflow-hidden group">
                       <div className="absolute top-0 inset-x-0 h-1 bg-[#A1A1AA]"></div>
                       <div className="text-[#A1A1AA] font-bold text-lg mb-2">2nd Place</div>
-                      <div className="h-16 w-16 mx-auto rounded-full bg-white border border-[#EAEAEA] flex items-center justify-center text-xl font-bold text-[#111111] mb-3 overflow-hidden shadow-sm">
+                      <div className="h-16 w-16 mx-auto rounded-full bg-white border border-anthropic-lightGray flex items-center justify-center text-xl font-bold text-anthropic-dark mb-3 overflow-hidden shadow-sm">
                         {topNominees[1].logoUrl ? <img src={topNominees[1].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[1].name.charAt(0)}
                       </div>
-                      <h3 className="font-bold text-[#111111] text-lg line-clamp-1 group-hover:text-black">{topNominees[1].name}</h3>
-                      <p className="text-sm font-semibold text-[#666666] mt-1">{topNominees[1].voteCount || 0} votes</p>
+                      <h3 className="font-bold text-anthropic-dark text-lg line-clamp-1 group-hover:text-black">{topNominees[1].name}</h3>
+                      <p className="text-sm font-semibold text-anthropic-midGray mt-1">{topNominees[1].voteCount || 0} votes</p>
                     </Link>
                   </div>
                 )}
@@ -341,16 +341,16 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
                 {/* 1st Place */}
                 {topNominees[0] && (
                   <div className="order-1 md:order-2 flex flex-col items-center transform md:-translate-y-6 z-10">
-                    <Link to={`${basePath}/nominee/${topNominees[0].id}`} className="bg-white rounded-2xl border-2 border-[#C8860A] p-8 w-full text-center shadow-lg hover:shadow-xl transition-all relative overflow-hidden group">
-                      <div className="absolute top-0 inset-x-0 h-2 bg-[#C8860A]"></div>
-                      <div className="text-[#C8860A] font-bold text-xl mb-3 flex items-center justify-center gap-2">
+                    <Link to={`${basePath}/nominee/${topNominees[0].id}`} className="bg-white rounded-2xl border-2 border-anthropic-orange p-8 w-full text-center shadow-lg hover:shadow-xl transition-all relative overflow-hidden group">
+                      <div className="absolute top-0 inset-x-0 h-2 bg-anthropic-orange"></div>
+                      <div className="text-anthropic-orange font-bold text-xl mb-3 flex items-center justify-center gap-2">
                         <Trophy className="h-5 w-5" /> 1st Place
                       </div>
-                      <div className="h-20 w-20 mx-auto rounded-full bg-[#FAFAFA] border border-[#EAEAEA] flex items-center justify-center text-2xl font-bold text-[#111111] mb-4 overflow-hidden shadow-md">
+                      <div className="h-20 w-20 mx-auto rounded-full bg-anthropic-light border border-anthropic-lightGray flex items-center justify-center text-2xl font-bold text-anthropic-dark mb-4 overflow-hidden shadow-md">
                         {topNominees[0].logoUrl ? <img src={topNominees[0].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[0].name.charAt(0)}
                       </div>
-                      <h3 className="font-bold text-[#111111] text-xl line-clamp-1 group-hover:text-black">{topNominees[0].name}</h3>
-                      <p className="text-base font-bold text-[#111111] mt-2 bg-[#FAFAFA] inline-block px-4 py-1 rounded-full border border-[#EAEAEA]">{topNominees[0].voteCount || 0} votes</p>
+                      <h3 className="font-bold text-anthropic-dark text-xl line-clamp-1 group-hover:text-black">{topNominees[0].name}</h3>
+                      <p className="text-base font-bold text-anthropic-dark mt-2 bg-anthropic-light inline-block px-4 py-1 rounded-full border border-anthropic-lightGray">{topNominees[0].voteCount || 0} votes</p>
                     </Link>
                   </div>
                 )}
@@ -358,14 +358,14 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
                 {/* 3rd Place */}
                 {topNominees[2] && (
                   <div className="order-3 flex flex-col items-center">
-                    <Link to={`${basePath}/nominee/${topNominees[2].id}`} className="bg-[#FAFAFA] rounded-2xl border border-[#EAEAEA] p-6 w-full text-center hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <Link to={`${basePath}/nominee/${topNominees[2].id}`} className="bg-anthropic-light rounded-2xl border border-anthropic-lightGray p-6 w-full text-center hover:shadow-md hover:border-anthropic-dark transition-all relative overflow-hidden group">
                       <div className="absolute top-0 inset-x-0 h-1 bg-[#D4A373]"></div>
                       <div className="text-[#D4A373] font-bold text-lg mb-2">3rd Place</div>
-                      <div className="h-16 w-16 mx-auto rounded-full bg-white border border-[#EAEAEA] flex items-center justify-center text-xl font-bold text-[#111111] mb-3 overflow-hidden shadow-sm">
+                      <div className="h-16 w-16 mx-auto rounded-full bg-white border border-anthropic-lightGray flex items-center justify-center text-xl font-bold text-anthropic-dark mb-3 overflow-hidden shadow-sm">
                         {topNominees[2].logoUrl ? <img src={topNominees[2].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[2].name.charAt(0)}
                       </div>
-                      <h3 className="font-bold text-[#111111] text-lg line-clamp-1 group-hover:text-black">{topNominees[2].name}</h3>
-                      <p className="text-sm font-semibold text-[#666666] mt-1">{topNominees[2].voteCount || 0} votes</p>
+                      <h3 className="font-bold text-anthropic-dark text-lg line-clamp-1 group-hover:text-black">{topNominees[2].name}</h3>
+                      <p className="text-sm font-semibold text-anthropic-midGray mt-1">{topNominees[2].voteCount || 0} votes</p>
                     </Link>
                   </div>
                 )}
@@ -374,10 +374,10 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
           )}
 
           {showNominateForm && (
-            <div className="bg-white shadow-xl rounded-3xl border border-[#EAEAEA] mb-12 overflow-hidden">
-              <div className="bg-[#111111] px-8 py-6 flex justify-between items-center">
+            <div className="bg-white shadow-xl rounded-3xl border border-anthropic-lightGray mb-12 overflow-hidden">
+              <div className="bg-anthropic-dark px-8 py-6 flex justify-between items-center">
                 <h3 className="text-xl font-bold text-white">Submit a Nomination</h3>
-                <button onClick={() => setShowNominateForm(false)} className="text-[#A1A1AA] hover:text-white transition-colors">
+                <button onClick={() => setShowNominateForm(false)} className="text-gray-400 hover:text-white transition-colors">
                   <X className="h-6 w-6" />
                 </button>
               </div>
@@ -385,27 +385,27 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
                 <form onSubmit={handleNominate} className="space-y-6 max-w-3xl mx-auto">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-semibold text-[#111111] mb-2">Nominee Name / Company</label>
-                      <input type="text" required value={nomName} onChange={e => setNomName(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-4 bg-[#FAFAFA]" placeholder="e.g. Acme Corp" />
+                      <label className="block text-sm font-semibold text-anthropic-dark mb-2">Nominee Name / Company</label>
+                      <input type="text" required value={nomName} onChange={e => setNomName(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-anthropic-dark shadow-sm ring-1 ring-inset ring-anthropic-lightGray focus:ring-2 focus:ring-inset focus:ring-anthropic-dark sm:text-sm px-4 bg-anthropic-light" placeholder="e.g. Acme Corp" />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-[#111111] mb-2">Nominee Email</label>
-                      <input type="email" required value={nomEmail} onChange={e => setNomEmail(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-4 bg-[#FAFAFA]" placeholder="hello@acme.com" />
+                      <label className="block text-sm font-semibold text-anthropic-dark mb-2">Nominee Email</label>
+                      <input type="email" required value={nomEmail} onChange={e => setNomEmail(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-anthropic-dark shadow-sm ring-1 ring-inset ring-anthropic-lightGray focus:ring-2 focus:ring-inset focus:ring-anthropic-dark sm:text-sm px-4 bg-anthropic-light" placeholder="hello@acme.com" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-[#111111] mb-2">Website URL</label>
-                    <input type="url" value={nomWebsite} onChange={e => setNomWebsite(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-4 bg-[#FAFAFA]" placeholder="https://" />
+                    <label className="block text-sm font-semibold text-anthropic-dark mb-2">Website URL</label>
+                    <input type="url" value={nomWebsite} onChange={e => setNomWebsite(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-anthropic-dark shadow-sm ring-1 ring-inset ring-anthropic-lightGray focus:ring-2 focus:ring-inset focus:ring-anthropic-dark sm:text-sm px-4 bg-anthropic-light" placeholder="https://" />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-[#111111] mb-2">Why do they deserve this award?</label>
-                    <textarea required rows={4} value={nomDesc} onChange={e => setNomDesc(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-sm px-4 bg-[#FAFAFA]" placeholder="Tell us about their achievements..." />
+                    <label className="block text-sm font-semibold text-anthropic-dark mb-2">Why do they deserve this award?</label>
+                    <textarea required rows={4} value={nomDesc} onChange={e => setNomDesc(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-anthropic-dark shadow-sm ring-1 ring-inset ring-anthropic-lightGray focus:ring-2 focus:ring-inset focus:ring-anthropic-dark sm:text-sm px-4 bg-anthropic-light" placeholder="Tell us about their achievements..." />
                   </div>
-                  <div className="flex gap-4 pt-4 border-t border-[#EAEAEA]">
-                    <button type="submit" disabled={submitting} className="inline-flex justify-center rounded-xl bg-[#111111] px-8 py-3 text-base font-bold text-white shadow-sm hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#111111] transition-all transform hover:-translate-y-0.5">
+                  <div className="flex gap-4 pt-4 border-t border-anthropic-lightGray">
+                    <button type="submit" disabled={submitting} className="inline-flex justify-center rounded-xl bg-anthropic-dark px-8 py-3 text-base font-bold text-anthropic-light shadow-sm hover:opacity-90 transition-all transform hover:-translate-y-0.5">
                       {submitting ? 'Submitting...' : 'Submit Nomination'}
                     </button>
-                    <button type="button" onClick={() => setShowNominateForm(false)} className="inline-flex justify-center rounded-xl bg-white px-8 py-3 text-base font-bold text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] hover:bg-[#FAFAFA] transition-colors">
+                    <button type="button" onClick={() => setShowNominateForm(false)} className="inline-flex justify-center rounded-xl bg-white px-8 py-3 text-base font-bold text-anthropic-dark shadow-sm ring-1 ring-inset ring-anthropic-lightGray hover:bg-anthropic-light transition-colors">
                       Cancel
                     </button>
                   </div>
@@ -417,35 +417,35 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
           {/* Search Bar */}
           <div className="mb-8 relative max-w-2xl mx-auto">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-              <Search className="h-5 w-5 text-[#999999]" />
+              <Search className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
               placeholder={`Search ${nominees.length} nominees...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full rounded-2xl border-0 py-4 pl-12 pr-4 text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] focus:ring-2 focus:ring-inset focus:ring-[#111111] sm:text-base bg-white transition-shadow hover:shadow-md"
+              className="block w-full rounded-2xl border-0 py-4 pl-12 pr-4 text-anthropic-dark shadow-sm ring-1 ring-inset ring-anthropic-lightGray focus:ring-2 focus:ring-inset focus:ring-anthropic-dark sm:text-base bg-white transition-shadow hover:shadow-md font-sans"
             />
           </div>
 
           {/* Nominees Grid */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-16">
             {filteredNominees.map((nominee) => (
-              <div key={nominee.id} className="bg-white overflow-hidden shadow-sm rounded-2xl border border-[#EAEAEA] flex flex-col relative hover:shadow-lg hover:border-[#111111] transition-all group">
+              <div key={nominee.id} className="bg-white overflow-hidden shadow-sm rounded-2xl border border-anthropic-lightGray flex flex-col relative hover:shadow-lg hover:border-anthropic-dark transition-all group font-sans">
                 <div className="px-6 py-8 flex-grow flex flex-col items-center text-center">
-                  <div className="h-20 w-20 rounded-full bg-[#FAFAFA] border border-[#EAEAEA] flex items-center justify-center text-2xl font-bold text-[#111111] mb-4 overflow-hidden shadow-sm">
+                  <div className="h-20 w-20 rounded-full bg-anthropic-light border border-anthropic-lightGray flex items-center justify-center text-2xl font-bold text-anthropic-dark mb-4 overflow-hidden shadow-sm">
                     {nominee.logoUrl ? <img src={nominee.logoUrl} alt="" className="h-full w-full object-cover" /> : nominee.name.charAt(0)}
                   </div>
-                  <h3 className="text-xl font-bold text-[#111111] mb-2 line-clamp-1 group-hover:text-black">{nominee.name}</h3>
+                  <h3 className="text-xl font-bold text-anthropic-dark mb-2 line-clamp-1 group-hover:text-black">{nominee.name}</h3>
                   {(nominee.title || nominee.company) && (
-                    <p className="text-xs text-[#666666] mb-3 line-clamp-1">
+                    <p className="text-xs text-anthropic-midGray mb-3 line-clamp-1">
                       {nominee.title} {nominee.title && nominee.company ? '@' : ''} {nominee.company}
                     </p>
                   )}
-                  <p className="text-sm text-[#666666] mb-6 line-clamp-3 leading-relaxed">{nominee.aiSummary || nominee.description}</p>
+                  <p className="text-sm text-anthropic-midGray mb-6 line-clamp-3 leading-relaxed font-serif">{nominee.aiSummary || nominee.description}</p>
                 </div>
-                <div className="bg-[#FAFAFA] p-4 border-t border-[#EAEAEA] flex flex-col gap-3">
-                  <Link to={`${basePath}/nominee/${nominee.id}`} className="w-full inline-flex justify-center items-center rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[#111111] shadow-sm border border-[#EAEAEA] hover:bg-[#FAFAFA] transition-colors">
+                <div className="bg-anthropic-light p-4 border-t border-anthropic-lightGray flex flex-col gap-3">
+                  <Link to={`${basePath}/nominee/${nominee.id}`} className="w-full inline-flex justify-center items-center rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-anthropic-dark shadow-sm border border-anthropic-lightGray hover:bg-gray-50 transition-colors">
                     View Profile
                   </Link>
                   <button
@@ -453,24 +453,24 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
                     disabled={hasVoted}
                     className={`w-full inline-flex justify-center items-center rounded-xl px-4 py-2.5 text-sm font-bold shadow-sm transition-colors ${
                       hasVoted 
-                        ? 'bg-[#FAFAFA] text-[#666666] border border-[#EAEAEA] cursor-not-allowed' 
-                        : 'bg-[#111111] text-white hover:bg-black'
+                        ? 'bg-anthropic-light text-anthropic-midGray border border-anthropic-lightGray cursor-not-allowed' 
+                        : 'bg-anthropic-dark text-anthropic-light hover:opacity-90'
                     }`}
                   >
                     {hasVoted ? <><CheckCircle2 className="h-4 w-4 mr-2" /> Voted</> : 'Vote Now'}
                   </button>
-                  <div className="text-center text-xs font-semibold text-[#666666]">
+                  <div className="text-center text-xs font-semibold text-anthropic-midGray">
                     {nominee.voteCount || 0} Votes
                   </div>
                 </div>
               </div>
             ))}
             {filteredNominees.length === 0 && (
-              <div className="col-span-full text-center py-20 text-[#666666] bg-white rounded-3xl border border-dashed border-[#EAEAEA]">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#FAFAFA] mb-4">
-                  <Search className="h-8 w-8 text-[#CCCCCC]" />
+              <div className="col-span-full text-center py-20 text-anthropic-midGray bg-white rounded-3xl border border-dashed border-anthropic-lightGray">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-anthropic-light mb-4">
+                  <Search className="h-8 w-8 text-gray-300" />
                 </div>
-                <h3 className="text-lg font-bold text-[#111111] mb-2">No nominees found</h3>
+                <h3 className="text-lg font-bold text-anthropic-dark mb-2">No nominees found</h3>
                 <p>Try adjusting your search or be the first to nominate someone!</p>
               </div>
             )}

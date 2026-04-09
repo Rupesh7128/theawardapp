@@ -270,28 +270,28 @@ export default function PublicNominee({ customAwardId }: { customAwardId?: strin
           </Link>
 
           {/* Profile Card */}
-          <div className="bg-white rounded-3xl shadow-sm border border-[#EAEAEA] overflow-hidden mb-8 relative">
-            <div className="h-32 bg-[#111111] absolute top-0 left-0 right-0 z-0"></div>
+          <div className="bg-white rounded-3xl shadow-sm border border-anthropic-lightGray overflow-hidden mb-8 relative">
+            <div className="h-32 bg-anthropic-dark absolute top-0 left-0 right-0 z-0"></div>
             
-            <div className="px-8 pt-20 pb-8 relative z-10 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6 border-b border-[#EAEAEA]">
+            <div className="px-8 pt-20 pb-8 relative z-10 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6 border-b border-anthropic-lightGray">
               <div className="flex flex-col sm:flex-row items-start sm:items-end gap-6">
                 <div className="h-32 w-32 rounded-2xl bg-white p-1.5 shadow-md flex-shrink-0">
                   {nominee.logoUrl ? (
-                    <img src={nominee.logoUrl} alt="" className="h-full w-full rounded-xl object-cover border border-[#EAEAEA]" />
+                    <img src={nominee.logoUrl} alt="" className="h-full w-full rounded-xl object-cover border border-anthropic-lightGray" />
                   ) : (
-                    <div className="h-full w-full rounded-xl bg-[#FAFAFA] flex items-center justify-center text-4xl font-bold text-[#111111] border border-[#EAEAEA]">
+                    <div className="h-full w-full rounded-xl bg-anthropic-light flex items-center justify-center text-4xl font-bold text-anthropic-dark border border-anthropic-lightGray">
                       {nominee.name.charAt(0)}
                     </div>
                   )}
                 </div>
                 <div className="pb-2">
-                  <h1 className="text-3xl sm:text-4xl font-bold text-[#111111]">{nominee.name}</h1>
+                  <h1 className="text-3xl sm:text-4xl font-bold text-anthropic-dark">{nominee.name}</h1>
                   {(nominee.title || nominee.company) && (
-                    <p className="mt-2 text-lg text-[#666666]">
-                      {nominee.title} {nominee.title && nominee.company ? 'at' : ''} <span className="font-semibold text-[#111111]">{nominee.company}</span>
+                    <p className="mt-2 text-lg text-anthropic-midGray">
+                      {nominee.title} {nominee.title && nominee.company ? 'at' : ''} <span className="font-semibold text-anthropic-dark">{nominee.company}</span>
                     </p>
                   )}
-                  <p className="mt-1 text-sm text-[#C8860A] font-semibold flex items-center gap-1.5">
+                  <p className="mt-1 text-sm text-anthropic-orange font-semibold flex items-center gap-1.5">
                     <Trophy className="h-4 w-4" /> Nominated for {category?.name}
                   </p>
                 </div>
@@ -303,8 +303,8 @@ export default function PublicNominee({ customAwardId }: { customAwardId?: strin
                   disabled={hasVoted}
                   className={`w-full sm:w-48 flex justify-center items-center gap-2 rounded-xl px-6 py-3.5 text-base font-semibold shadow-sm transition-all ${
                     hasVoted 
-                      ? 'bg-[#FAFAFA] text-[#666666] border border-[#EAEAEA] cursor-not-allowed' 
-                      : 'bg-[#111111] text-white hover:bg-black hover:shadow-md transform hover:-translate-y-0.5'
+                      ? 'bg-anthropic-light text-anthropic-midGray border border-anthropic-lightGray cursor-not-allowed' 
+                      : 'bg-anthropic-dark text-anthropic-light hover:opacity-90 hover:shadow-md transform hover:-translate-y-0.5'
                   }`}
                 >
                   {hasVoted ? (
@@ -313,33 +313,33 @@ export default function PublicNominee({ customAwardId }: { customAwardId?: strin
                     'Vote Now'
                   )}
                 </button>
-                <div className="text-center text-sm font-medium text-[#666666]">
-                  <span className="text-xl font-bold text-[#111111] mr-1">{nominee.voteCount || 0}</span> votes
+                <div className="text-center text-sm font-medium text-anthropic-midGray">
+                  <span className="text-xl font-bold text-anthropic-dark mr-1">{nominee.voteCount || 0}</span> votes
                 </div>
               </div>
             </div>
 
             {/* Actions Bar */}
-            <div className="bg-[#FAFAFA] px-8 py-4 flex flex-wrap items-center gap-4">
+            <div className="bg-anthropic-light px-8 py-4 flex flex-wrap items-center gap-4">
               {nominee.linkedinUrl && (
-                <a href={nominee.linkedinUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-[#666666] hover:text-[#0A66C2] transition-colors">
+                <a href={nominee.linkedinUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-anthropic-midGray hover:text-[#0A66C2] transition-colors">
                   <Linkedin className="h-4 w-4" /> LinkedIn
                 </a>
               )}
               {nominee.website && (
-                <a href={nominee.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-[#666666] hover:text-[#111111] transition-colors">
+                <a href={nominee.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-anthropic-midGray hover:text-anthropic-dark transition-colors">
                   <Globe className="h-4 w-4" /> Website
                 </a>
               )}
               {nominee.email && (
-                <a href={`mailto:${nominee.email}`} className="inline-flex items-center gap-2 text-sm font-medium text-[#666666] hover:text-[#111111] transition-colors">
+                <a href={`mailto:${nominee.email}`} className="inline-flex items-center gap-2 text-sm font-medium text-anthropic-midGray hover:text-anthropic-dark transition-colors">
                   <Mail className="h-4 w-4" /> Email
                 </a>
               )}
               <div className="flex-1"></div>
               <button 
                 onClick={() => { navigator.clipboard.writeText(window.location.href); alert('Link copied!'); }}
-                className="inline-flex items-center gap-2 text-sm font-medium text-[#666666] hover:text-[#111111] transition-colors bg-white border border-[#EAEAEA] px-3 py-1.5 rounded-lg"
+                className="inline-flex items-center gap-2 text-sm font-medium text-anthropic-midGray hover:text-anthropic-dark transition-colors bg-white border border-anthropic-lightGray px-3 py-1.5 rounded-lg"
               >
                 <Share2 className="h-4 w-4" /> Share Profile
               </button>
@@ -347,19 +347,19 @@ export default function PublicNominee({ customAwardId }: { customAwardId?: strin
 
             {/* About Section */}
             <div className="px-8 py-8">
-              <h2 className="text-xl font-bold text-[#111111] mb-4">About</h2>
-              <div className="prose prose-sm sm:prose-base max-w-none text-[#444444] leading-relaxed whitespace-pre-wrap">
+              <h2 className="text-xl font-bold text-anthropic-dark mb-4">About</h2>
+              <div className="prose prose-sm sm:prose-base max-w-none text-anthropic-midGray leading-relaxed whitespace-pre-wrap">
                 {nominee.description || 'No description provided.'}
               </div>
               
               {nominee.aiSummary && (
-                <div className="mt-8 bg-[#FAFAFA] border border-[#EAEAEA] rounded-2xl p-6 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#C8860A]/10 to-transparent rounded-bl-full pointer-events-none"></div>
+                <div className="mt-8 bg-anthropic-light border border-anthropic-lightGray rounded-2xl p-6 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-anthropic-orange/10 to-transparent rounded-bl-full pointer-events-none"></div>
                   <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="h-5 w-5 text-[#C8860A]" />
-                    <h3 className="font-semibold text-[#111111]">AI Summary</h3>
+                    <Sparkles className="h-5 w-5 text-anthropic-orange" />
+                    <h3 className="font-semibold text-anthropic-dark">AI Summary</h3>
                   </div>
-                  <p className="text-[#666666] italic leading-relaxed">
+                  <p className="text-anthropic-midGray italic leading-relaxed">
                     "{nominee.aiSummary}"
                   </p>
                 </div>
@@ -371,28 +371,28 @@ export default function PublicNominee({ customAwardId }: { customAwardId?: strin
           {similarNominees.length > 0 && (
             <div className="mt-16">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-[#111111]">Other Nominees in {category?.name}</h2>
-                <Link to={`${basePath}/category/${nominee.categoryId}`} className="text-sm font-medium text-[#666666] hover:text-[#111111]">
+                <h2 className="text-xl font-bold text-anthropic-dark">Other Nominees in {category?.name}</h2>
+                <Link to={`${basePath}/category/${nominee.categoryId}`} className="text-sm font-medium text-anthropic-midGray hover:text-anthropic-dark">
                   View all &rarr;
                 </Link>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {similarNominees.map(sim => (
-                  <Link key={sim.id} to={`${basePath}/nominee/${sim.id}`} className="bg-white rounded-2xl border border-[#EAEAEA] p-6 hover:shadow-md hover:border-[#111111] transition-all group">
+                  <Link key={sim.id} to={`${basePath}/nominee/${sim.id}`} className="bg-white rounded-2xl border border-anthropic-lightGray p-6 hover:shadow-md hover:border-anthropic-dark transition-all group">
                     <div className="flex items-center gap-4 mb-4">
                       {sim.logoUrl ? (
-                        <img src={sim.logoUrl} alt="" className="h-12 w-12 rounded-full object-cover border border-[#EAEAEA]" />
+                        <img src={sim.logoUrl} alt="" className="h-12 w-12 rounded-full object-cover border border-anthropic-lightGray" />
                       ) : (
-                        <div className="h-12 w-12 rounded-full bg-[#FAFAFA] flex items-center justify-center text-lg font-bold text-[#111111] border border-[#EAEAEA]">
+                        <div className="h-12 w-12 rounded-full bg-anthropic-light flex items-center justify-center text-lg font-bold text-anthropic-dark border border-anthropic-lightGray">
                           {sim.name.charAt(0)}
                         </div>
                       )}
                       <div>
-                        <h4 className="font-bold text-[#111111] group-hover:text-black line-clamp-1">{sim.name}</h4>
-                        <p className="text-xs text-[#666666]">{sim.voteCount || 0} votes</p>
+                        <h4 className="font-bold text-anthropic-dark group-hover:text-black line-clamp-1">{sim.name}</h4>
+                        <p className="text-xs text-anthropic-midGray">{sim.voteCount || 0} votes</p>
                       </div>
                     </div>
-                    <p className="text-sm text-[#666666] line-clamp-2">{sim.aiSummary || sim.description}</p>
+                    <p className="text-sm text-anthropic-midGray line-clamp-2">{sim.aiSummary || sim.description}</p>
                   </Link>
                 ))}
               </div>
@@ -405,17 +405,17 @@ export default function PublicNominee({ customAwardId }: { customAwardId?: strin
       {showOtpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[#111111]">Verify your vote</h3>
-              <button onClick={() => setShowOtpModal(false)} className="text-[#666666] hover:text-[#111111]">
+            <div className="px-6 py-4 border-b border-anthropic-lightGray flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-anthropic-dark">Verify your vote</h3>
+              <button onClick={() => setShowOtpModal(false)} className="text-anthropic-midGray hover:text-anthropic-dark">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="p-6">
               {otpStep === 'email' ? (
                 <form onSubmit={handleSendOtp}>
-                  <p className="text-sm text-[#666666] mb-4">
-                    Enter your email to cast your vote. We use this to prevent duplicate votes and ensure fair results.
+                  <p className="text-sm text-anthropic-midGray mb-4">
+                    Enter your email to receive a one-time passcode. This helps us ensure fair voting.
                   </p>
                   <label className="block text-sm font-medium text-[#111111] mb-2">Email address</label>
                   <input
