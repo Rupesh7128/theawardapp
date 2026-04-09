@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db, storage } from '../lib/firebase';
-import { doc, getDoc, updateDoc, collection, query, where, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, addDoc, deleteDoc, increment } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Settings, List, Users, Sparkles, Upload, Globe, BarChart, Download, CreditCard, Check, Code, Link as LinkIcon, Plus, Minus, Edit, Award, X, PieChart as PieChartIcon } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
@@ -41,6 +41,12 @@ export default function ManageAward() {
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('settings');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  
+  // State for manual votes
+  const [manualVoteNomineeId, setManualVoteNomineeId] = useState<string | null>(null);
+  const [manualVoteAmount, setManualVoteAmount] = useState<number>(0);
+
   const hasProAccess = Boolean(billingBypass || award?.plan === 'pro');
   
   // Settings State
@@ -389,11 +395,48 @@ Return ONLY a valid JSON array of objects. Do not use markdown blocks like \`\`\
   const topNomineesData = useMemo(() => {
     return [...nominees]
       .sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0))
-      .slice(0, 5)
-      .map(n => ({ name: n.name, votes: n.voteCount || 0 }));
-  }, [nominees]);
+      .slice(0, 10)
+      .map(n => ({ 
+        name: n.name, 
+        votes: n.voteCount || 0,
+        category: categories.find(c => c.id === n.categoryId)?.name || 'Unknown'
+      }));
+  }, [nominees, categories]);
 
-  const COLORS = ['#d97757', '#6a9bcc', '#788c5d', '#b0aea5', '#141413'];
+  const totalVotes = useMemo(() => nominees.reduce((sum, n) => sum + (n.voteCount || 0), 0), [nominees]);
+  
+  const categoryDistribution = useMemo(() => categories.map(c => ({
+    name: c.name,
+    value: nominees.filter(n => n.categoryId === c.id).length
+  })).filter(d => d.value > 0), [categories, nominees]);
+
+  const COLORS = ['#111111', '#C8860A', '#666666', '#A1A1AA', '#FAFAFA'];
+
+  const handleAddManualVotes = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualVoteNomineeId || manualVoteAmount <= 0) return;
+    
+    try {
+      const nomineeRef = doc(db, 'nominees', manualVoteNomineeId);
+      await updateDoc(nomineeRef, {
+        voteCount: increment(manualVoteAmount)
+      });
+      
+      // Update local state for immediate feedback
+      setNominees(prev => prev.map(n => 
+        n.id === manualVoteNomineeId 
+          ? { ...n, voteCount: (n.voteCount || 0) + manualVoteAmount }
+          : n
+      ));
+      
+      setManualVoteNomineeId(null);
+      setManualVoteAmount(0);
+      alert(`Successfully added ${manualVoteAmount} votes!`);
+    } catch (err) {
+      console.error('Error adding manual votes:', err);
+      alert('Failed to add manual votes.');
+    }
+  };
 
   if (loading) return <div className="p-8 text-center text-[#666666]">Loading...</div>;
 
@@ -515,7 +558,90 @@ Return ONLY a valid JSON array of objects. Do not use markdown blocks like \`\`\
       </div>
 
       <div className="bg-white shadow-sm sm:rounded-xl border border-[#EAEAEA]">
-        {activeTab === 'settings' && (
+        {selectedCategoryId ? (
+          <div className="px-6 py-8">
+            {(() => {
+              const cat = categories.find(c => c.id === selectedCategoryId);
+              if (!cat) return null;
+              const catNominees = nominees.filter(n => n.categoryId === selectedCategoryId);
+
+              return (
+                <div className="animate-in fade-in duration-300">
+                  <button 
+                    onClick={() => setSelectedCategoryId(null)}
+                    className="mb-6 flex items-center text-sm font-semibold text-anthropic-midGray hover:text-anthropic-dark transition-colors"
+                  >
+                    &larr; Back to Categories
+                  </button>
+                  
+                  <div className="bg-white rounded-3xl shadow-sm border border-anthropic-lightGray overflow-hidden mb-8 relative">
+                    <div className="h-24 absolute top-0 left-0 right-0 z-0" style={{ backgroundColor: cat.backgroundColor || '#111111' }}></div>
+                    <div className="px-8 pt-16 pb-8 relative z-10">
+                      <div className="flex justify-between items-end">
+                        <div>
+                          <h2 className="text-3xl font-bold text-anthropic-dark">{cat.name}</h2>
+                          <p className="text-anthropic-midGray mt-2 max-w-2xl">{cat.description || 'No description provided.'}</p>
+                        </div>
+                        <button 
+                          onClick={() => setEditingCategory(cat)}
+                          className="bg-white border border-anthropic-lightGray shadow-sm text-anthropic-dark px-4 py-2 rounded-xl text-sm font-bold hover:bg-anthropic-light transition-colors"
+                        >
+                          Edit Details
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-anthropic-dark">Nominees ({catNominees.length})</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {catNominees.map(nom => (
+                      <div key={nom.id} className="bg-white rounded-2xl border border-anthropic-lightGray p-6 hover:shadow-md transition-shadow relative group">
+                        <div className="flex items-center gap-4 mb-4">
+                          {nom.logoUrl ? (
+                            <img src={nom.logoUrl} alt="" className="h-12 w-12 rounded-full object-cover border border-anthropic-lightGray" />
+                          ) : (
+                            <div className="h-12 w-12 rounded-full bg-anthropic-light border border-anthropic-lightGray flex items-center justify-center text-lg font-bold text-anthropic-dark">
+                              {nom.name.charAt(0)}
+                            </div>
+                          )}
+                          <div>
+                            <h4 className="font-bold text-anthropic-dark line-clamp-1">{nom.name}</h4>
+                            <p className="text-sm font-semibold text-anthropic-orange">{nom.voteCount || 0} votes</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 pt-4 border-t border-anthropic-lightGray mt-4">
+                          <button 
+                            onClick={() => setEditingNominee(nom)}
+                            className="flex-1 bg-anthropic-light text-anthropic-dark px-3 py-2 rounded-lg text-sm font-semibold border border-anthropic-lightGray hover:bg-gray-100 transition-colors"
+                          >
+                            Edit Profile
+                          </button>
+                          <button 
+                            onClick={() => setManualVoteNomineeId(nom.id)}
+                            className="flex-1 bg-anthropic-dark text-white px-3 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+                          >
+                            + Add Votes
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {catNominees.length === 0 && (
+                      <div className="col-span-full py-12 text-center text-anthropic-midGray bg-anthropic-light rounded-2xl border border-dashed border-anthropic-lightGray">
+                        No nominees in this category yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        ) : (
+          <>
+            {activeTab === 'settings' && (
           <div className="px-6 py-8">
             <form onSubmit={handleSaveSettings} className="space-y-6 max-w-2xl">
               <div>
@@ -754,7 +880,11 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
             ) : (
               <ul role="list" className="divide-y divide-[#EAEAEA] border border-[#EAEAEA] rounded-lg">
                 {categories.map((category) => (
-                  <li key={category.id} className="flex justify-between gap-x-6 py-5 px-6 hover:bg-[#FAFAFA] transition-colors items-center">
+                  <li 
+                    key={category.id} 
+                    onClick={() => setSelectedCategoryId(category.id)}
+                    className="flex justify-between gap-x-6 py-5 px-6 hover:bg-[#FAFAFA] transition-colors items-center cursor-pointer group relative"
+                  >
                     <div className="flex min-w-0 gap-x-4">
                       <div className="min-w-0 flex-auto">
                         <p className="text-sm font-semibold leading-6 text-[#111111] flex items-center gap-2">
@@ -767,7 +897,7 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                       </div>
                     </div>
                     <button
-                      onClick={() => setEditingCategory(category)}
+                      onClick={(e) => { e.stopPropagation(); setEditingCategory(category); }}
                       className="text-[#666666] hover:text-[#111111] transition-colors p-2 rounded-md hover:bg-[#EAEAEA]"
                     >
                       <Edit className="h-4 w-4" />
@@ -999,6 +1129,12 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-[#666666]">
                             <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => setManualVoteNomineeId(nominee.id)}
+                                className="text-anthropic-orange hover:text-[#B07609] font-bold transition-colors text-xs"
+                              >
+                                + Votes
+                              </button>
                               <button
                                 onClick={() => setEditingNominee(nominee)}
                                 className="text-[#111111] hover:underline text-xs font-medium"
@@ -1241,47 +1377,116 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
 
         {activeTab === 'analytics' && (
           <div className="px-6 py-8">
-            <h3 className="text-lg font-semibold text-anthropic-dark font-sans mb-6">Campaign Analytics</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Top Nominees Chart */}
+            <div className="mb-8">
+              <h3 className="text-2xl font-bold text-anthropic-dark">Real-Time Analytics</h3>
+              <p className="mt-1 text-sm text-anthropic-midGray">Track your campaign's performance and voting activity.</p>
+            </div>
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
               <div className="bg-white p-6 rounded-2xl border border-anthropic-lightGray shadow-sm">
-                <h4 className="font-semibold text-anthropic-dark mb-4">Top Nominees by Votes</h4>
-                {topNomineesData.length > 0 ? (
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsBarChart data={topNomineesData}>
-                        <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip cursor={{ fill: '#f5f5f5' }} />
-                        <Bar dataKey="votes" fill="#d97757" radius={[4, 4, 0, 0]} />
-                      </RechartsBarChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="h-64 flex items-center justify-center text-gray-500">
-                    No vote data available yet.
-                  </div>
-                )}
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-semibold text-anthropic-midGray">Total Votes</h4>
+                  <BarChart className="h-5 w-5 text-anthropic-orange" />
+                </div>
+                <p className="text-3xl font-bold text-anthropic-dark">{totalVotes.toLocaleString()}</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl border border-anthropic-lightGray shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-semibold text-anthropic-midGray">Total Nominees</h4>
+                  <Users className="h-5 w-5 text-anthropic-dark" />
+                </div>
+                <p className="text-3xl font-bold text-anthropic-dark">{nominees.length}</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl border border-anthropic-lightGray shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-semibold text-anthropic-midGray">Categories</h4>
+                  <List className="h-5 w-5 text-anthropic-dark" />
+                </div>
+                <p className="text-3xl font-bold text-anthropic-dark">{categories.length}</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl border border-anthropic-lightGray shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-semibold text-anthropic-midGray">Leads Captured</h4>
+                  <Award className="h-5 w-5 text-anthropic-dark" />
+                </div>
+                <p className="text-3xl font-bold text-anthropic-dark">{leads.length}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              {/* Top 10 Nominees Chart */}
+              <div className="bg-white border border-anthropic-lightGray rounded-2xl p-6 shadow-sm">
+                <h4 className="text-lg font-bold text-anthropic-dark mb-6">Top 10 Nominees (Votes)</h4>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsBarChart data={topNomineesData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <XAxis dataKey="name" tick={{fontSize: 12}} tickLine={false} axisLine={false} />
+                      <YAxis tick={{fontSize: 12}} tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '12px', border: '1px solid #EAEAEA', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                        cursor={{fill: '#FAFAFA'}}
+                      />
+                      <Bar dataKey="votes" fill="#111111" radius={[4, 4, 0, 0]} />
+                    </RechartsBarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
-              {/* Quick Stats */}
-              <div className="bg-white p-6 rounded-2xl border border-anthropic-lightGray shadow-sm flex flex-col justify-center">
-                <h4 className="font-semibold text-anthropic-dark mb-6">Overview</h4>
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Total Categories</p>
-                    <p className="text-3xl font-semibold text-anthropic-dark">{categories.length}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Total Nominees</p>
-                    <p className="text-3xl font-semibold text-anthropic-dark">{nominees.length}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Total Leads Captured</p>
-                    <p className="text-3xl font-semibold text-anthropic-dark">{leads.length}</p>
-                  </div>
+              {/* Category Distribution Pie Chart */}
+              <div className="bg-white border border-anthropic-lightGray rounded-2xl p-6 shadow-sm">
+                <h4 className="text-lg font-bold text-anthropic-dark mb-6">Nominees per Category</h4>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={80}
+                        outerRadius={110}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {categoryDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '12px', border: '1px solid #EAEAEA', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
+              </div>
+            </div>
+            
+            {/* Leaderboard Table */}
+            <div className="bg-white border border-anthropic-lightGray rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-anthropic-lightGray bg-anthropic-light">
+                <h4 className="text-lg font-bold text-anthropic-dark">Global Leaderboard</h4>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-white text-anthropic-midGray font-semibold border-b border-anthropic-lightGray">
+                    <tr>
+                      <th className="px-6 py-4">Rank</th>
+                      <th className="px-6 py-4">Nominee</th>
+                      <th className="px-6 py-4">Category</th>
+                      <th className="px-6 py-4 text-right">Votes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-anthropic-lightGray">
+                    {topNomineesData.map((nom, idx) => (
+                      <tr key={idx} className="hover:bg-anthropic-light transition-colors">
+                        <td className="px-6 py-4 font-bold text-anthropic-dark">#{idx + 1}</td>
+                        <td className="px-6 py-4 font-semibold text-anthropic-dark">{nom.name}</td>
+                        <td className="px-6 py-4 text-anthropic-midGray">{nom.category}</td>
+                        <td className="px-6 py-4 text-right font-bold text-anthropic-orange">{nom.votes.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -1761,7 +1966,46 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
             </div>
           </div>
         )}
+        </>
+        )}
       </div>
+
+      {/* Manual Vote Modal */}
+      {manualVoteNomineeId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-anthropic-lightGray flex justify-between items-center bg-anthropic-dark">
+              <h3 className="text-lg font-bold text-white">Add Manual Votes</h3>
+              <button onClick={() => setManualVoteNomineeId(null)} className="text-gray-400 hover:text-white transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAddManualVotes} className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-anthropic-dark mb-2">Number of Votes to Add</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  required 
+                  value={manualVoteAmount || ''} 
+                  onChange={(e) => setManualVoteAmount(parseInt(e.target.value) || 0)}
+                  className="block w-full rounded-xl border-0 py-3 text-anthropic-dark shadow-sm ring-1 ring-inset ring-anthropic-lightGray focus:ring-2 focus:ring-inset focus:ring-anthropic-dark sm:text-sm px-4 bg-anthropic-light" 
+                  placeholder="e.g. 50" 
+                />
+                <p className="text-xs text-anthropic-midGray mt-2">This will immediately add to their total vote count.</p>
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-anthropic-lightGray">
+                <button type="button" onClick={() => setManualVoteNomineeId(null)} className="rounded-xl px-4 py-2 text-sm font-semibold text-anthropic-dark hover:bg-anthropic-light transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" className="rounded-xl bg-anthropic-dark px-6 py-2 text-sm font-bold text-white shadow-sm hover:opacity-90 transition-all">
+                  Add Votes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
