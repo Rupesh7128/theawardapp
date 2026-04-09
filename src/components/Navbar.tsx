@@ -27,7 +27,7 @@ export default function Navbar() {
           </Link>
 
           {/* Nav links (only on landing / public pages) */}
-          {!user && isLanding && (
+          {isLanding && (
             <div className="hidden sm:flex items-center gap-6 text-sm font-medium text-[#555555]">
               <a href="#live-example" className="hover:text-[#111111] transition-colors">Demo</a>
               <a href="#pricing" className="hover:text-[#111111] transition-colors">Pricing</a>
@@ -51,18 +51,11 @@ export default function Navbar() {
                 )}
                 <Link
                   to="/dashboard"
-                  className="text-[#666666] hover:text-[#111111] flex items-center gap-1.5 font-medium text-sm transition-colors"
+                  className="text-white bg-[#111111] px-4 py-1.5 rounded-lg flex items-center gap-1.5 font-medium text-sm hover:bg-black transition-colors"
                 >
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
                 </Link>
-                <button
-                  onClick={logOut}
-                  className="text-[#666666] hover:text-[#111111] flex items-center gap-1.5 font-medium text-sm transition-colors"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign out
-                </button>
               </>
             ) : (
               <button

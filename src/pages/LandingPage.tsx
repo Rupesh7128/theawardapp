@@ -216,7 +216,6 @@ function LiveAwardsSection() {
 // -------------------------------------------------------------------
 export default function LandingPage() {
   const { user, signIn } = useAuth();
-  if (user) return <Navigate to="/dashboard" />;
 
   return (
     <div className="bg-white overflow-x-hidden">
