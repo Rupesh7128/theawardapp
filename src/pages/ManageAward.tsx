@@ -219,7 +219,7 @@ export default function ManageAward() {
         // Validate headers first
         if (rows.length > 0) {
           const headers = Object.keys(rows[0]).map(h => h.toLowerCase().trim());
-          const required = ['name', 'email', 'categoryname'];
+          const required = ['first name', 'last name', 'email', 'categoryname'];
           const missing = required.filter(r => !headers.includes(r));
           if (missing.length > 0) {
             setImportErrors([`CSV is missing required columns: ${missing.join(', ')}. Please use exact column names.`]);
@@ -238,12 +238,14 @@ export default function ManageAward() {
             normalizedRow[key.toLowerCase().trim()] = row[key];
           });
 
-          const nomName = normalizedRow.name?.trim();
+          const firstName = normalizedRow['first name']?.trim();
+          const lastName = normalizedRow['last name']?.trim();
+          const nomName = [firstName, lastName].filter(Boolean).join(' ');
           const nomEmail = normalizedRow.email?.trim();
           const catName = normalizedRow.categoryname?.trim();
           
-          if (!nomName || !nomEmail || !catName) {
-            errors.push(`Row ${i + 2}: Missing required data (name, email, or categoryName)`);
+          if (!firstName || !lastName || !nomEmail || !catName) {
+            errors.push(`Row ${i + 2}: Missing required data (first name, last name, email, or categoryName)`);
             continue;
           }
 
@@ -253,6 +255,10 @@ export default function ManageAward() {
             continue;
           }
 
+          const websiteValue = normalizedRow['website url']?.trim() || normalizedRow.website?.trim() || '';
+          const linkedinValue = normalizedRow['linkedin url']?.trim() || normalizedRow.linkedin?.trim() || '';
+          const imageValue = normalizedRow['image url']?.trim() || normalizedRow.image?.trim() || normalizedRow.logourl?.trim() || '';
+
           try {
             const docRef = await addDoc(collection(db, 'nominees'), {
               awardId: id,
@@ -260,10 +266,11 @@ export default function ManageAward() {
               name: nomName,
               email: nomEmail,
               description: normalizedRow.description?.trim() || '',
-              website: normalizedRow.website?.trim() || '',
+              website: websiteValue,
+              linkedinUrl: linkedinValue,
               title: normalizedRow.title?.trim() || '',
               company: normalizedRow.company?.trim() || '',
-              logoUrl: '',
+              logoUrl: imageValue,
               aiSummary: '',
               status: 'approved',
               voteCount: 0,
@@ -278,9 +285,11 @@ export default function ManageAward() {
               name: nomName,
               email: nomEmail,
               description: normalizedRow.description?.trim() || '',
-              website: normalizedRow.website?.trim() || '',
+              website: websiteValue,
+              linkedinUrl: linkedinValue,
               title: normalizedRow.title?.trim() || '',
               company: normalizedRow.company?.trim() || '',
+              logoUrl: imageValue,
               status: 'approved',
               voteCount: 0
             }]);
@@ -635,12 +644,13 @@ export default function ManageAward() {
                   </div>
                   
                   <div className="space-y-6 text-sm text-[#444444]">
-                    <p>To bulk import nominees, your CSV file must have a header row with specific column names. The system is case-insensitive, so "Name" or "name" will both work.</p>
+                    <p>To bulk import nominees, your CSV file must have a header row with specific column names. The system is case-insensitive.</p>
                     
                     <div>
                       <h4 className="font-bold text-[#111111] mb-2 text-base">Required Columns:</h4>
                       <ul className="list-disc pl-5 space-y-2">
-                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">name</code>: The nominee's full name or company name.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">first name</code>: The nominee's first name.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">last name</code>: The nominee's last name.</li>
                         <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">email</code>: A valid contact email.</li>
                         <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">categoryName</code>: Must exactly match one of your existing category names (e.g. "Best CRM").</li>
                       </ul>
@@ -652,21 +662,23 @@ export default function ManageAward() {
                         <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">title</code>: The person's job title (e.g. "CEO").</li>
                         <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">company</code>: Their company name.</li>
                         <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">description</code>: A brief bio or reason for nomination.</li>
-                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">website</code>: A link to their portfolio or company site.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">website url</code>: A link to their portfolio or company site.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">linkedin url</code>: A link to their LinkedIn profile.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">image url</code>: A link to their profile photo/logo.</li>
                       </ul>
                     </div>
 
                     <div className="bg-[#FAFAFA] border border-[#EAEAEA] rounded-lg p-4 overflow-x-auto">
                       <p className="font-semibold text-[#111111] mb-2">Example CSV Format:</p>
-                      <pre className="text-xs">name,email,categoryName,title,company,description,website
-John Doe,john@acme.com,Best CEO,Founder,Acme Corp,Grew revenue 300%.,https://acme.com
-Jane Smith,jane@test.com,Best Marketer,CMO,Test Inc,,</pre>
+                      <pre className="text-xs">first name,last name,email,categoryName,title,company,description,website url,linkedin url,image url
+John,Doe,john@acme.com,Best CEO,Founder,Acme Corp,Grew revenue.,https://acme.com,https://linkedin.com/in/johndoe,https://example.com/john.jpg
+Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                     </div>
 
                     <div className="flex justify-end pt-4">
                       <button
                         onClick={() => {
-                          const csvContent = "name,email,categoryName,title,company,description,website\nJohn Doe,john@example.com,Best Category,CEO,Acme Corp,Great leader.,https://example.com";
+                          const csvContent = "first name,last name,email,categoryName,title,company,description,website url,linkedin url,image url\nJohn,Doe,john@example.com,Best Category,CEO,Acme Corp,Great leader.,https://example.com,https://linkedin.com/in/johndoe,https://example.com/john.jpg";
                           const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                           const link = document.createElement("a");
                           const url = URL.createObjectURL(blob);
@@ -1001,12 +1013,13 @@ Jane Smith,jane@test.com,Best Marketer,CMO,Test Inc,,</pre>
                   </div>
                   
                   <div className="space-y-6 text-sm text-[#444444]">
-                    <p>To bulk import nominees, your CSV file must have a header row with specific column names. The system is case-insensitive, so "Name" or "name" will both work.</p>
+                    <p>To bulk import nominees, your CSV file must have a header row with specific column names. The system is case-insensitive.</p>
                     
                     <div>
                       <h4 className="font-bold text-[#111111] mb-2 text-base">Required Columns:</h4>
                       <ul className="list-disc pl-5 space-y-2">
-                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">name</code>: The nominee's full name or company name.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">first name</code>: The nominee's first name.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">last name</code>: The nominee's last name.</li>
                         <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">email</code>: A valid contact email.</li>
                         <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">categoryName</code>: Must exactly match one of your existing category names (e.g. "Best CRM").</li>
                       </ul>
@@ -1018,21 +1031,23 @@ Jane Smith,jane@test.com,Best Marketer,CMO,Test Inc,,</pre>
                         <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">title</code>: The person's job title (e.g. "CEO").</li>
                         <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">company</code>: Their company name.</li>
                         <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">description</code>: A brief bio or reason for nomination.</li>
-                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">website</code>: A link to their portfolio or company site.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">website url</code>: A link to their portfolio or company site.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">linkedin url</code>: A link to their LinkedIn profile.</li>
+                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111]">image url</code>: A link to their profile photo/logo.</li>
                       </ul>
                     </div>
 
                     <div className="bg-[#FAFAFA] border border-[#EAEAEA] rounded-lg p-4 overflow-x-auto">
                       <p className="font-semibold text-[#111111] mb-2">Example CSV Format:</p>
-                      <pre className="text-xs">name,email,categoryName,title,company,description,website
-John Doe,john@acme.com,Best CEO,Founder,Acme Corp,Grew revenue 300%.,https://acme.com
-Jane Smith,jane@test.com,Best Marketer,CMO,Test Inc,,</pre>
+                      <pre className="text-xs">first name,last name,email,categoryName,title,company,description,website url,linkedin url,image url
+John,Doe,john@acme.com,Best CEO,Founder,Acme Corp,Grew revenue.,https://acme.com,https://linkedin.com/in/johndoe,https://example.com/john.jpg
+Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                     </div>
 
                     <div className="flex justify-end pt-4">
                       <button
                         onClick={() => {
-                          const csvContent = "name,email,categoryName,title,company,description,website\nJohn Doe,john@example.com,Best Category,CEO,Acme Corp,Great leader.,https://example.com";
+                          const csvContent = "first name,last name,email,categoryName,title,company,description,website url,linkedin url,image url\nJohn,Doe,john@example.com,Best Category,CEO,Acme Corp,Great leader.,https://example.com,https://linkedin.com/in/johndoe,https://example.com/john.jpg";
                           const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                           const link = document.createElement("a");
                           const url = URL.createObjectURL(blob);
