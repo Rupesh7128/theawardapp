@@ -5,6 +5,7 @@ import { doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, incr
 import { ArrowLeft, Globe, Sparkles, Linkedin, Mail, Share2, CheckCircle2, X, Trophy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { format } from 'date-fns';
 
 import PublicLayout from '../components/PublicLayout';
 
@@ -338,6 +339,27 @@ export default function PublicNominee({ customAwardId }: { customAwardId?: strin
                 {nominee.title} {nominee.title && nominee.company ? 'at' : ''} <span className="font-bold text-anthropic-dark not-italic">{nominee.company}</span>
               </motion.div>
             )}
+
+            <motion.div variants={itemVariants} className="mt-2 mb-8 flex flex-wrap justify-center items-center gap-4 sm:gap-6 text-xs sm:text-sm font-bold tracking-widest uppercase text-anthropic-midGray">
+              {award?.nominationEndDate && (
+                <div className="flex flex-col items-center bg-white px-4 py-2 rounded-xl border border-anthropic-lightGray shadow-sm">
+                  <span className="text-[10px] mb-1 text-anthropic-midGray/70">Nominations Close</span>
+                  <span className="text-anthropic-dark">{format(new Date(award.nominationEndDate), 'MMM d, yyyy - h:mm a')}</span>
+                </div>
+              )}
+              {award?.votingStartDate && (
+                <div className="flex flex-col items-center bg-white px-4 py-2 rounded-xl border border-anthropic-lightGray shadow-sm">
+                  <span className="text-[10px] mb-1 text-anthropic-midGray/70">Voting Starts</span>
+                  <span className="text-anthropic-dark">{format(new Date(award.votingStartDate), 'MMM d, yyyy - h:mm a')}</span>
+                </div>
+              )}
+              {award?.votingEndDate && (
+                <div className="flex flex-col items-center bg-white px-4 py-2 rounded-xl border border-anthropic-lightGray shadow-sm">
+                  <span className="text-[10px] mb-1 text-anthropic-midGray/70">Voting Closes</span>
+                  <span className="text-anthropic-dark">{format(new Date(award.votingEndDate), 'MMM d, yyyy - h:mm a')}</span>
+                </div>
+              )}
+            </motion.div>
 
             {/* Huge Floating Vote Button */}
             <motion.div variants={itemVariants} className="mt-8 mb-12">
