@@ -710,7 +710,7 @@ export default function LandingPage() {
           <div className="grid gap-10 md:grid-cols-[1.3fr_0.8fr_0.8fr_1fr]">
             <div>
               <Link to="/" className="inline-flex items-center">
-                <BrandMark dark />
+                <BrandMark dark whiteBg />
               </Link>
               <p className="mt-4 max-w-sm text-sm leading-6 text-[#999999]">
                 Launch award campaigns that nominees want to share, voters want to join, and your team can turn into qualified pipeline.
@@ -751,7 +751,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mt-10 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-[#666666] sm:flex-row sm:items-center sm:justify-between">
-            <p>© 2026 taa. Built for modern award campaigns.</p>
+            <p>© 2026 The Awards App. Built for modern award campaigns.</p>
             <div className="flex items-center gap-4">
               <a href="#pricing" className="transition-colors hover:text-white">Pricing</a>
               <a href="#waitlist" className="transition-colors hover:text-white">Waitlist</a>
