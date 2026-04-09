@@ -219,8 +219,19 @@ export default function ManageAward() {
         // Validate headers first
         if (rows.length > 0) {
           const headers = Object.keys(rows[0]).map(h => h.toLowerCase().trim());
-          const required = ['first name', 'last name', 'email', 'categoryname'];
-          const missing = required.filter(r => !headers.includes(r));
+          
+          // We will flexibly check for 'email address' or 'email'
+          const hasEmail = headers.includes('email') || headers.includes('email address');
+          const hasFirstName = headers.includes('first name');
+          const hasLastName = headers.includes('last name');
+          const hasCategory = headers.includes('categoryname') || headers.includes('category name');
+          
+          const missing = [];
+          if (!hasFirstName) missing.push('first name');
+          if (!hasLastName) missing.push('last name');
+          if (!hasEmail) missing.push('email or email address');
+          if (!hasCategory) missing.push('categoryname');
+
           if (missing.length > 0) {
             setImportErrors([`CSV is missing required columns: ${missing.join(', ')}. Please use exact column names.`]);
             setImporting(false);
@@ -241,8 +252,16 @@ export default function ManageAward() {
           const firstName = normalizedRow['first name']?.trim();
           const lastName = normalizedRow['last name']?.trim();
           const nomName = [firstName, lastName].filter(Boolean).join(' ');
-          const nomEmail = normalizedRow.email?.trim();
-          const catName = normalizedRow.categoryname?.trim();
+          
+          // Use 'email address' if 'email' has a non-email value like "Yes", or if 'email' is missing
+          let nomEmail = normalizedRow['email address']?.trim() || normalizedRow.email?.trim();
+          if (normalizedRow.email?.trim()?.toLowerCase() === 'yes' && normalizedRow['email address']) {
+            nomEmail = normalizedRow['email address']?.trim();
+          }
+
+          const catName = normalizedRow.categoryname?.trim() || normalizedRow['category name']?.trim();
+          const companyName = normalizedRow['company name']?.trim() || normalizedRow.company?.trim() || '';
+          const titleName = normalizedRow.tittle?.trim() || normalizedRow.title?.trim() || '';
           
           if (!firstName || !lastName || !nomEmail || !catName) {
             errors.push(`Row ${i + 2}: Missing required data (first name, last name, email, or categoryName)`);
@@ -255,9 +274,9 @@ export default function ManageAward() {
             continue;
           }
 
-          const websiteValue = normalizedRow['website url']?.trim() || normalizedRow.website?.trim() || '';
-          const linkedinValue = normalizedRow['linkedin url']?.trim() || normalizedRow.linkedin?.trim() || '';
-          const imageValue = normalizedRow['image url']?.trim() || normalizedRow.image?.trim() || normalizedRow.logourl?.trim() || '';
+          const websiteValue = normalizedRow['website link']?.trim() || normalizedRow['website url']?.trim() || normalizedRow.website?.trim() || '';
+          const linkedinValue = normalizedRow['person linkedin']?.trim() || normalizedRow['linkedin url']?.trim() || normalizedRow.linkedin?.trim() || '';
+          const imageValue = normalizedRow['profile pic']?.trim() || normalizedRow['image url']?.trim() || normalizedRow.image?.trim() || normalizedRow.logourl?.trim() || '';
 
           try {
             const docRef = await addDoc(collection(db, 'nominees'), {
@@ -268,8 +287,8 @@ export default function ManageAward() {
               description: normalizedRow.description?.trim() || '',
               website: websiteValue,
               linkedinUrl: linkedinValue,
-              title: normalizedRow.title?.trim() || '',
-              company: normalizedRow.company?.trim() || '',
+              title: titleName,
+              company: companyName,
               logoUrl: imageValue,
               aiSummary: '',
               status: 'approved',
@@ -287,8 +306,8 @@ export default function ManageAward() {
               description: normalizedRow.description?.trim() || '',
               website: websiteValue,
               linkedinUrl: linkedinValue,
-              title: normalizedRow.title?.trim() || '',
-              company: normalizedRow.company?.trim() || '',
+              title: titleName,
+              company: companyName,
               logoUrl: imageValue,
               status: 'approved',
               voteCount: 0
