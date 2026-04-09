@@ -1252,20 +1252,20 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
         {activeTab === 'certificates' && (
           <div className="px-6 py-8">
             <div className="mb-8">
-              <h3 className="text-lg font-semibold leading-6 text-[#111111]">Certificates & Badges</h3>
-              <p className="mt-1 text-sm text-[#666666]">Upload your official certificate template and winner badge. Once the award is completed, you can send these directly to the winners.</p>
+              <h3 className="text-lg font-semibold leading-6 text-anthropic-dark">Certificates & Badges</h3>
+              <p className="mt-1 text-sm text-anthropic-midGray">Upload your official certificate template and winner badge. Once the award is completed, you can send these directly to the winners.</p>
             </div>
 
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 mb-12">
               {/* Certificate Upload */}
-              <div className="bg-[#FAFAFA] border border-[#EAEAEA] rounded-2xl p-6">
-                <h4 className="text-base font-semibold text-[#111111] mb-2 flex items-center gap-2">
+              <div className="bg-anthropic-light border border-anthropic-lightGray rounded-2xl p-6">
+                <h4 className="text-base font-semibold text-anthropic-dark mb-2 flex items-center gap-2">
                   <Award className="h-5 w-5" /> Certificate Template
                 </h4>
-                <p className="text-sm text-[#666666] mb-4">Upload a blank certificate template. We'll automatically place the winner's name and category on it.</p>
+                <p className="text-sm text-anthropic-midGray mb-4">Upload a blank certificate template. We'll automatically place the winner's name and category on it.</p>
                 
                 {certificateUrl ? (
-                  <div className="relative rounded-xl overflow-hidden border border-[#EAEAEA] bg-white aspect-[4/3] flex items-center justify-center group mb-4">
+                  <div className="relative rounded-xl overflow-hidden border border-anthropic-lightGray bg-white aspect-[4/3] flex items-center justify-center group mb-4">
                     <img src={certificateUrl} alt="Certificate Template" className="max-h-full object-contain" />
                     <button 
                       onClick={async () => {
@@ -1278,10 +1278,10 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                     </button>
                   </div>
                 ) : (
-                  <div className="border-2 border-dashed border-[#CCCCCC] rounded-xl p-8 text-center bg-white mb-4">
-                    <Award className="h-8 w-8 text-[#999999] mx-auto mb-3" />
-                    <p className="text-sm font-medium text-[#111111]">No template uploaded</p>
-                    <p className="text-xs text-[#666666] mt-1">PNG, JPG up to 5MB</p>
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-white mb-4">
+                    <Award className="h-8 w-8 text-gray-400 mx-auto mb-3" />
+                    <p className="text-sm font-medium text-anthropic-dark">No template uploaded</p>
+                    <p className="text-xs text-anthropic-midGray mt-1">PNG, JPG up to 5MB</p>
                   </div>
                 )}
                 
@@ -1303,20 +1303,20 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                         }
                       }
                     }}
-                    className="text-sm flex-1 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#111111] file:text-white hover:file:bg-black cursor-pointer"
+                    className="text-sm flex-1 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-anthropic-dark file:text-white hover:file:opacity-90 cursor-pointer"
                   />
                 </div>
               </div>
 
               {/* Badge Upload */}
-              <div className="bg-[#FAFAFA] border border-[#EAEAEA] rounded-2xl p-6">
-                <h4 className="text-base font-semibold text-[#111111] mb-2 flex items-center gap-2">
+              <div className="bg-anthropic-light border border-anthropic-lightGray rounded-2xl p-6">
+                <h4 className="text-base font-semibold text-anthropic-dark mb-2 flex items-center gap-2">
                   <Sparkles className="h-5 w-5" /> Winner Badge
                 </h4>
-                <p className="text-sm text-[#666666] mb-4">Upload a transparent PNG badge that winners can place on their website or email signature.</p>
+                <p className="text-sm text-anthropic-midGray mb-4">Upload a transparent PNG badge that winners can place on their website or email signature.</p>
                 
                 {badgeUrl ? (
-                  <div className="relative rounded-xl overflow-hidden border border-[#EAEAEA] bg-white aspect-[4/3] flex items-center justify-center group mb-4 p-4">
+                  <div className="relative rounded-xl overflow-hidden border border-anthropic-lightGray bg-white aspect-[4/3] flex items-center justify-center group mb-4 p-4">
                     <img src={badgeUrl} alt="Winner Badge" className="max-h-full object-contain drop-shadow-md" />
                     <button 
                       onClick={async () => {
@@ -1329,10 +1329,10 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                     </button>
                   </div>
                 ) : (
-                  <div className="border-2 border-dashed border-[#CCCCCC] rounded-xl p-8 text-center bg-white mb-4">
-                    <Sparkles className="h-8 w-8 text-[#999999] mx-auto mb-3" />
-                    <p className="text-sm font-medium text-[#111111]">No badge uploaded</p>
-                    <p className="text-xs text-[#666666] mt-1">Transparent PNG up to 2MB</p>
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-white mb-4">
+                    <Sparkles className="h-8 w-8 text-gray-400 mx-auto mb-3" />
+                    <p className="text-sm font-medium text-anthropic-dark">No badge uploaded</p>
+                    <p className="text-xs text-anthropic-midGray mt-1">Transparent PNG up to 2MB</p>
                   </div>
                 )}
                 
@@ -1354,16 +1354,16 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                         }
                       }
                     }}
-                    className="text-sm flex-1 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#111111] file:text-white hover:file:bg-black cursor-pointer"
+                    className="text-sm flex-1 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-anthropic-dark file:text-white hover:file:opacity-90 cursor-pointer"
                   />
                 </div>
               </div>
             </div>
 
             {/* Send to Winners Action */}
-            <div className="bg-white border-2 border-[#111111] rounded-2xl p-8 text-center max-w-2xl mx-auto shadow-lg">
-              <h3 className="text-2xl font-bold text-[#111111] mb-2">Award Completed?</h3>
-              <p className="text-[#666666] mb-6">When voting has ended, you can automatically send an email to the top nominee in each category containing their certificate and badge.</p>
+            <div className="bg-white border-2 border-anthropic-dark rounded-2xl p-8 text-center max-w-2xl mx-auto shadow-lg">
+              <h3 className="text-2xl font-bold text-anthropic-dark mb-2">Award Completed?</h3>
+              <p className="text-anthropic-midGray mb-6">When voting has ended, you can automatically send an email to the top nominee in each category containing their certificate and badge.</p>
               
               <button
                 disabled={sendingCertificates || (!certificateUrl && !badgeUrl) || nominees.length === 0}
@@ -1381,8 +1381,8 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                 }}
                 className={`inline-flex items-center justify-center rounded-xl px-8 py-3 text-base font-bold shadow-sm transition-all ${
                   (!certificateUrl && !badgeUrl) || nominees.length === 0
-                    ? 'bg-[#FAFAFA] text-[#A1A1AA] border border-[#EAEAEA] cursor-not-allowed'
-                    : 'bg-[#111111] text-white hover:bg-black transform hover:-translate-y-0.5'
+                    ? 'bg-anthropic-light text-anthropic-midGray border border-anthropic-lightGray cursor-not-allowed'
+                    : 'bg-anthropic-dark text-white hover:opacity-90 transform hover:-translate-y-0.5'
                 }`}
               >
                 {sendingCertificates ? 'Sending Emails...' : 'Send Assets to Winners'}
