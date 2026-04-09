@@ -582,12 +582,39 @@ Return ONLY a valid JSON array of objects. Do not use markdown blocks like \`\`\
                           <h2 className="text-3xl font-bold text-anthropic-dark">{cat.name}</h2>
                           <p className="text-anthropic-midGray mt-2 max-w-2xl">{cat.description || 'No description provided.'}</p>
                         </div>
-                        <button 
-                          onClick={() => setEditingCategory(cat)}
-                          className="bg-white border border-anthropic-lightGray shadow-sm text-anthropic-dark px-4 py-2 rounded-xl text-sm font-bold hover:bg-anthropic-light transition-colors"
-                        >
-                          Edit Details
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <input
+                              type="file"
+                              accept=".csv"
+                              onChange={handleFileUpload}
+                              disabled={importing}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                            <button
+                              disabled={importing}
+                              className="inline-flex items-center rounded-xl bg-anthropic-dark px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-all disabled:opacity-50"
+                            >
+                              {importing ? (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  Importing...
+                                </div>
+                              ) : (
+                                <>
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  Import CSV
+                                </>
+                              )}
+                            </button>
+                          </div>
+                          <button 
+                            onClick={() => setEditingCategory(cat)}
+                            className="bg-white border border-anthropic-lightGray shadow-sm text-anthropic-dark px-4 py-2 rounded-xl text-sm font-bold hover:bg-anthropic-light transition-colors"
+                          >
+                            Edit Details
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1253,10 +1280,48 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                   
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-[#111111] mb-1">Photo</label>
-                      <div className="flex items-center gap-4">
-                        {editingNominee.logoUrl && (
-                          <img src={editingNominee.logoUrl} alt="" className="h-16 w-16 rounded-full object-cover border border-[#EAEAEA]" />
+                      <label className="block text-sm font-medium text-anthropic-dark mb-1">Name</label>
+                      <input 
+                        type="text"
+                        value={editingNominee.name}
+                        onChange={e => setEditingNominee({...editingNominee, name: e.target.value})}
+                        className="w-full rounded-md border border-anthropic-lightGray px-3 py-2 focus:ring-anthropic-dark focus:border-anthropic-dark"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-anthropic-dark mb-1">Title</label>
+                        <input 
+                          type="text"
+                          value={editingNominee.title || ''}
+                          onChange={e => setEditingNominee({...editingNominee, title: e.target.value})}
+                          className="w-full rounded-md border border-anthropic-lightGray px-3 py-2 focus:ring-anthropic-dark focus:border-anthropic-dark"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-anthropic-dark mb-1">Company</label>
+                        <input 
+                          type="text"
+                          value={editingNominee.company || ''}
+                          onChange={e => setEditingNominee({...editingNominee, company: e.target.value})}
+                          className="w-full rounded-md border border-anthropic-lightGray px-3 py-2 focus:ring-anthropic-dark focus:border-anthropic-dark"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-anthropic-dark mb-1">Photo / Logo URL (Or upload below)</label>
+                      <input 
+                        type="url"
+                        placeholder="https://..."
+                        value={editingNominee.logoUrl || ''}
+                        onChange={e => setEditingNominee({...editingNominee, logoUrl: e.target.value})}
+                        className="w-full rounded-md border border-anthropic-lightGray px-3 py-2 focus:ring-anthropic-dark focus:border-anthropic-dark mb-2"
+                      />
+                      <div className="flex items-center gap-4 mt-2">
+                        {editingNominee.logoUrl && !nomineePhotoFile && (
+                          <img src={editingNominee.logoUrl} alt="" className="h-16 w-16 rounded-full object-cover border border-anthropic-lightGray" />
                         )}
                         <input 
                           type="file" 
@@ -1272,23 +1337,34 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-[#111111] mb-1">Description</label>
+                      <label className="block text-sm font-medium text-anthropic-dark mb-1">Description / Bio</label>
                       <textarea 
                         rows={4}
-                        value={editingNominee.description}
+                        value={editingNominee.description || ''}
                         onChange={e => setEditingNominee({...editingNominee, description: e.target.value})}
-                        className="w-full rounded-md border border-[#EAEAEA] px-3 py-2 focus:ring-[#111111] focus:border-[#111111]"
+                        className="w-full rounded-md border border-anthropic-lightGray px-3 py-2 focus:ring-anthropic-dark focus:border-anthropic-dark"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-[#111111] mb-1">Website</label>
-                      <input 
-                        type="url"
-                        value={editingNominee.website}
-                        onChange={e => setEditingNominee({...editingNominee, website: e.target.value})}
-                        className="w-full rounded-md border border-[#EAEAEA] px-3 py-2 focus:ring-[#111111] focus:border-[#111111]"
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-anthropic-dark mb-1">Website URL</label>
+                        <input 
+                          type="url"
+                          value={editingNominee.website || ''}
+                          onChange={e => setEditingNominee({...editingNominee, website: e.target.value})}
+                          className="w-full rounded-md border border-anthropic-lightGray px-3 py-2 focus:ring-anthropic-dark focus:border-anthropic-dark"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-anthropic-dark mb-1">LinkedIn URL</label>
+                        <input 
+                          type="url"
+                          value={editingNominee.linkedinUrl || ''}
+                          onChange={e => setEditingNominee({...editingNominee, linkedinUrl: e.target.value})}
+                          className="w-full rounded-md border border-anthropic-lightGray px-3 py-2 focus:ring-anthropic-dark focus:border-anthropic-dark"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -1313,12 +1389,25 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                           }
 
                           await updateDoc(doc(db, 'nominees', editingNominee.id), {
-                            description: editingNominee.description,
-                            website: editingNominee.website,
+                            name: editingNominee.name,
+                            title: editingNominee.title || '',
+                            company: editingNominee.company || '',
+                            description: editingNominee.description || '',
+                            website: editingNominee.website || '',
+                            linkedinUrl: editingNominee.linkedinUrl || '',
                             logoUrl
                           });
 
-                          setNominees(prev => prev.map(n => n.id === editingNominee.id ? { ...editingNominee, logoUrl } : n));
+                          setNominees(prev => prev.map(n => n.id === editingNominee.id ? { 
+                            ...editingNominee, 
+                            name: editingNominee.name,
+                            title: editingNominee.title || '',
+                            company: editingNominee.company || '',
+                            description: editingNominee.description || '',
+                            website: editingNominee.website || '',
+                            linkedinUrl: editingNominee.linkedinUrl || '',
+                            logoUrl 
+                          } : n));
                           setEditingNominee(null);
                           setNomineePhotoFile(null);
                         } catch (error) {
