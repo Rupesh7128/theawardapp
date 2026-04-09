@@ -6,6 +6,7 @@ import { doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, incr
 import { Trophy, ArrowLeft, Plus, CheckCircle2, X, Search } from 'lucide-react';
 
 import PublicLayout from '../components/PublicLayout';
+import MultiStepNominationForm from '../components/MultiStepNominationForm';
 
 export default function PublicCategory({ customAwardId }: { customAwardId?: string }) {
   const { id: paramId, categoryId } = useParams<{ id: string, categoryId: string }>();
@@ -23,11 +24,6 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
   
   // Nomination Form State
   const [showNominateForm, setShowNominateForm] = useState(false);
-  const [nomName, setNomName] = useState('');
-  const [nomEmail, setNomEmail] = useState('');
-  const [nomDesc, setNomDesc] = useState('');
-  const [nomWebsite, setNomWebsite] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   // OTP Voting State
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -238,42 +234,6 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
     }
   };
 
-  const handleNominate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await addDoc(collection(db, 'nominees'), {
-        awardId: id,
-        categoryId,
-        name: nomName,
-        email: nomEmail,
-        description: nomDesc,
-        website: nomWebsite,
-        logoUrl: '',
-        aiSummary: '',
-        status: 'pending',
-        voteCount: 0,
-        submittedBy: user?.uid || 'anonymous',
-        createdAt: new Date().toISOString()
-      });
-      
-      if (nomEmail) {
-        await addDoc(collection(db, 'leads'), {
-          awardId: id, email: nomEmail, source: 'nomination', createdAt: new Date().toISOString()
-        });
-      }
-
-      alert("Nomination submitted successfully! It will appear once approved by the organizer.");
-      setShowNominateForm(false);
-      setNomName(''); setNomEmail(''); setNomDesc(''); setNomWebsite('');
-    } catch (error) {
-      console.error("Error submitting nomination:", error);
-      alert("Failed to submit nomination.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   if (loading) return <div className="min-h-screen flex items-center justify-center text-[#666666]">Loading...</div>;
 
   const topNominees = nominees.slice(0, 3);
@@ -322,96 +282,95 @@ export default function PublicCategory({ customAwardId }: { customAwardId?: stri
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end min-h-[300px] mb-4 font-sans">
+              <div className="flex flex-col md:flex-row items-end justify-center gap-4 lg:gap-6 min-h-[300px] mb-4 font-sans relative">
+                {/* Ambient glow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[200px] bg-gradient-to-b from-transparent via-anthropic-orange/5 to-transparent blur-[50px] pointer-events-none -z-10"></div>
+
                 {/* 2nd Place */}
                 {topNominees[1] && (
-                  <div className="order-2 md:order-1 flex flex-col items-center">
-                    <Link to={`${basePath}/nominee/${topNominees[1].id}`} className="bg-anthropic-light rounded-2xl border border-anthropic-lightGray p-6 w-full text-center hover:shadow-md hover:border-anthropic-dark transition-all relative overflow-hidden group">
-                      <div className="absolute top-0 inset-x-0 h-1 bg-[#A1A1AA]"></div>
-                      <div className="text-[#A1A1AA] font-bold text-lg mb-2">2nd Place</div>
-                      <div className="h-16 w-16 mx-auto rounded-full bg-white border border-anthropic-lightGray flex items-center justify-center text-xl font-bold text-anthropic-dark mb-3 overflow-hidden shadow-sm">
+                  <Link 
+                    to={`${basePath}/nominee/${topNominees[1].id}`} 
+                    className="w-full md:w-1/3 order-2 md:order-1 group relative flex flex-col justify-end h-[85%]"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-gray-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl -z-10"></div>
+                    <div className="text-center mb-6 px-4 transition-transform duration-500 group-hover:-translate-y-2">
+                      <div className="h-16 w-16 mx-auto rounded-full bg-white border-4 border-gray-300 flex items-center justify-center text-xl font-bold text-anthropic-dark mb-3 overflow-hidden shadow-lg relative">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-gray-400/30 to-transparent pointer-events-none z-10 mix-blend-overlay"></div>
                         {topNominees[1].logoUrl ? <img src={topNominees[1].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[1].name.charAt(0)}
                       </div>
-                      <h3 className="font-bold text-anthropic-dark text-lg line-clamp-1 group-hover:text-black">{topNominees[1].name}</h3>
-                      <p className="text-sm font-semibold text-anthropic-midGray mt-1">{topNominees[1].voteCount || 0} votes</p>
-                    </Link>
-                  </div>
+                      <h3 className="font-bold text-anthropic-dark text-lg line-clamp-1">{topNominees[1].name}</h3>
+                      <p className="text-xs font-bold uppercase tracking-widest text-gray-500 bg-gray-100 inline-block px-3 py-1 rounded-full shadow-inner mt-2">{topNominees[1].voteCount || 0} votes</p>
+                    </div>
+                    <div className="w-full bg-gradient-to-t from-gray-100 to-white border-t-8 border-gray-300 rounded-t-[24px] h-32 flex items-start justify-center pt-6 relative overflow-hidden shadow-[0_-5px_20px_rgba(0,0,0,0.03)] transition-all duration-500 group-hover:shadow-[0_-10px_30px_rgba(0,0,0,0.06)]">
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/50 to-transparent pointer-events-none"></div>
+                      <span className="text-6xl font-black text-gray-200/80 drop-shadow-sm">2</span>
+                    </div>
+                  </Link>
                 )}
                 
                 {/* 1st Place */}
                 {topNominees[0] && (
-                  <div className="order-1 md:order-2 flex flex-col items-center transform md:-translate-y-6 z-10">
-                    <Link to={`${basePath}/nominee/${topNominees[0].id}`} className="bg-white rounded-2xl border-2 border-anthropic-orange p-8 w-full text-center shadow-lg hover:shadow-xl transition-all relative overflow-hidden group">
-                      <div className="absolute top-0 inset-x-0 h-2 bg-anthropic-orange"></div>
-                      <div className="text-anthropic-orange font-bold text-xl mb-3 flex items-center justify-center gap-2">
-                        <Trophy className="h-5 w-5" /> 1st Place
+                  <Link 
+                    to={`${basePath}/nominee/${topNominees[0].id}`} 
+                    className="w-full md:w-1/3 order-1 md:order-2 group relative z-20 flex flex-col justify-end h-full"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-anthropic-orange/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl -z-10"></div>
+                    <div className="text-center mb-6 px-4 transition-transform duration-500 group-hover:-translate-y-4">
+                      <div className="flex justify-center mb-3">
+                        <Trophy className="h-8 w-8 text-[#FFD700] drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]" />
                       </div>
-                      <div className="h-20 w-20 mx-auto rounded-full bg-anthropic-light border border-anthropic-lightGray flex items-center justify-center text-2xl font-bold text-anthropic-dark mb-4 overflow-hidden shadow-md">
+                      <div className="h-20 w-20 mx-auto rounded-full bg-white border-[5px] border-[#FFD700] flex items-center justify-center text-2xl font-bold text-anthropic-orange mb-4 overflow-hidden shadow-[0_10px_30px_rgba(255,215,0,0.3)] relative">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-[#FFD700]/30 to-transparent pointer-events-none z-10 mix-blend-overlay"></div>
                         {topNominees[0].logoUrl ? <img src={topNominees[0].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[0].name.charAt(0)}
                       </div>
-                      <h3 className="font-bold text-anthropic-dark text-xl line-clamp-1 group-hover:text-black">{topNominees[0].name}</h3>
-                      <p className="text-base font-bold text-anthropic-dark mt-2 bg-anthropic-light inline-block px-4 py-1 rounded-full border border-anthropic-lightGray">{topNominees[0].voteCount || 0} votes</p>
-                    </Link>
-                  </div>
+                      <h3 className="font-extrabold text-anthropic-dark text-xl line-clamp-1">{topNominees[0].name}</h3>
+                      <p className="text-xs font-black uppercase tracking-widest text-white bg-gradient-to-r from-anthropic-orange to-[#FFD700] inline-block px-4 py-1.5 rounded-full shadow-md mt-2">{topNominees[0].voteCount || 0} votes</p>
+                    </div>
+                    <div className="w-full bg-anthropic-dark rounded-t-[32px] h-40 flex items-start justify-center pt-8 relative overflow-hidden shadow-[0_-10px_30px_rgba(0,0,0,0.15)] transition-all duration-500 group-hover:shadow-[0_-20px_40px_rgba(200,134,10,0.25)]">
+                      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 mix-blend-overlay pointer-events-none"></div>
+                      <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#FFD700]/50 via-[#FFD700] to-[#FFD700]/50 shadow-[0_0_15px_rgba(255,215,0,0.8)]"></div>
+                      <span className="text-7xl font-black text-white/10 drop-shadow-2xl">1</span>
+                    </div>
+                  </Link>
                 )}
 
                 {/* 3rd Place */}
                 {topNominees[2] && (
-                  <div className="order-3 flex flex-col items-center">
-                    <Link to={`${basePath}/nominee/${topNominees[2].id}`} className="bg-anthropic-light rounded-2xl border border-anthropic-lightGray p-6 w-full text-center hover:shadow-md hover:border-anthropic-dark transition-all relative overflow-hidden group">
-                      <div className="absolute top-0 inset-x-0 h-1 bg-[#D4A373]"></div>
-                      <div className="text-[#D4A373] font-bold text-lg mb-2">3rd Place</div>
-                      <div className="h-16 w-16 mx-auto rounded-full bg-white border border-anthropic-lightGray flex items-center justify-center text-xl font-bold text-anthropic-dark mb-3 overflow-hidden shadow-sm">
+                  <Link 
+                    to={`${basePath}/nominee/${topNominees[2].id}`} 
+                    className="w-full md:w-1/3 order-3 flex flex-col justify-end h-[75%] group relative"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#CD7F32]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl -z-10"></div>
+                    <div className="text-center mb-6 px-4 transition-transform duration-500 group-hover:-translate-y-2">
+                      <div className="h-14 w-14 mx-auto rounded-full bg-white border-4 border-[#CD7F32]/80 flex items-center justify-center text-lg font-bold text-anthropic-dark mb-3 overflow-hidden shadow-lg relative">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-[#CD7F32]/30 to-transparent pointer-events-none z-10 mix-blend-overlay"></div>
                         {topNominees[2].logoUrl ? <img src={topNominees[2].logoUrl} alt="" className="h-full w-full object-cover" /> : topNominees[2].name.charAt(0)}
                       </div>
-                      <h3 className="font-bold text-anthropic-dark text-lg line-clamp-1 group-hover:text-black">{topNominees[2].name}</h3>
-                      <p className="text-sm font-semibold text-anthropic-midGray mt-1">{topNominees[2].voteCount || 0} votes</p>
-                    </Link>
-                  </div>
+                      <h3 className="font-bold text-anthropic-dark text-lg line-clamp-1">{topNominees[2].name}</h3>
+                      <p className="text-xs font-bold uppercase tracking-widest text-[#CD7F32] bg-[#CD7F32]/10 inline-block px-3 py-1 rounded-full shadow-inner mt-2">{topNominees[2].voteCount || 0} votes</p>
+                    </div>
+                    <div className="w-full bg-gradient-to-t from-gray-100 to-white border-t-8 border-[#CD7F32]/80 rounded-t-[24px] h-24 flex items-start justify-center pt-5 relative overflow-hidden shadow-[0_-5px_20px_rgba(0,0,0,0.03)] transition-all duration-500 group-hover:shadow-[0_-10px_30px_rgba(205,127,50,0.1)]">
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/50 to-transparent pointer-events-none"></div>
+                      <span className="text-5xl font-black text-gray-200/80 drop-shadow-sm">3</span>
+                    </div>
+                  </Link>
                 )}
               </div>
             </div>
           )}
 
           {showNominateForm && (
-            <div className="bg-white shadow-xl rounded-3xl border border-anthropic-lightGray mb-12 overflow-hidden">
-              <div className="bg-anthropic-dark px-8 py-6 flex justify-between items-center">
-                <h3 className="text-xl font-bold text-white">Submit a Nomination</h3>
-                <button onClick={() => setShowNominateForm(false)} className="text-gray-400 hover:text-white transition-colors">
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              <div className="p-8">
-                <form onSubmit={handleNominate} className="space-y-6 max-w-3xl mx-auto">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-anthropic-dark mb-2">Nominee Name / Company</label>
-                      <input type="text" required value={nomName} onChange={e => setNomName(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-anthropic-dark shadow-sm ring-1 ring-inset ring-anthropic-lightGray focus:ring-2 focus:ring-inset focus:ring-anthropic-dark sm:text-sm px-4 bg-anthropic-light" placeholder="e.g. Acme Corp" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-anthropic-dark mb-2">Nominee Email</label>
-                      <input type="email" required value={nomEmail} onChange={e => setNomEmail(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-anthropic-dark shadow-sm ring-1 ring-inset ring-anthropic-lightGray focus:ring-2 focus:ring-inset focus:ring-anthropic-dark sm:text-sm px-4 bg-anthropic-light" placeholder="hello@acme.com" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-anthropic-dark mb-2">Website URL</label>
-                    <input type="url" value={nomWebsite} onChange={e => setNomWebsite(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-anthropic-dark shadow-sm ring-1 ring-inset ring-anthropic-lightGray focus:ring-2 focus:ring-inset focus:ring-anthropic-dark sm:text-sm px-4 bg-anthropic-light" placeholder="https://" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-anthropic-dark mb-2">Why do they deserve this award?</label>
-                    <textarea required rows={4} value={nomDesc} onChange={e => setNomDesc(e.target.value)} className="block w-full rounded-xl border-0 py-3 text-anthropic-dark shadow-sm ring-1 ring-inset ring-anthropic-lightGray focus:ring-2 focus:ring-inset focus:ring-anthropic-dark sm:text-sm px-4 bg-anthropic-light" placeholder="Tell us about their achievements..." />
-                  </div>
-                  <div className="flex gap-4 pt-4 border-t border-anthropic-lightGray">
-                    <button type="submit" disabled={submitting} className="inline-flex justify-center rounded-xl bg-anthropic-dark px-8 py-3 text-base font-bold text-anthropic-light shadow-sm hover:opacity-90 transition-all transform hover:-translate-y-0.5">
-                      {submitting ? 'Submitting...' : 'Submit Nomination'}
-                    </button>
-                    <button type="button" onClick={() => setShowNominateForm(false)} className="inline-flex justify-center rounded-xl bg-white px-8 py-3 text-base font-bold text-anthropic-dark shadow-sm ring-1 ring-inset ring-anthropic-lightGray hover:bg-anthropic-light transition-colors">
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+            <MultiStepNominationForm 
+              awardId={award.id}
+              categoryId={category.id}
+              categories={[]} // not needed since categoryId is provided
+              onClose={() => setShowNominateForm(false)}
+              onSuccess={() => {
+                setShowNominateForm(false);
+                alert('Nomination submitted successfully!');
+                // Note: The realtime snapshot listener will automatically fetch the new pending nominee.
+              }}
+            />
           )}
 
           {/* Search Bar */}
