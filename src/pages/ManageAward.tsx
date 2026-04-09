@@ -35,6 +35,7 @@ export default function ManageAward() {
   const [categories, setCategories] = useState<any[]>([]);
   const [nominees, setNominees] = useState<any[]>([]);
   const [importing, setImporting] = useState(false);
+  const [importProgressMsg, setImportProgressMsg] = useState('');
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [showImportGuide, setShowImportGuide] = useState(false);
   const [leads, setLeads] = useState<any[]>([]);
@@ -212,122 +213,136 @@ export default function ManageAward() {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        const rows = results.data as any[];
-        let addedCount = 0;
-        const errors: string[] = [];
-
-        // Validate headers first
-        if (rows.length > 0) {
-          const headers = Object.keys(rows[0]).map(h => h.toLowerCase().trim());
-          
-          // We will flexibly check for 'email address' or 'email'
-          const hasEmail = headers.includes('email') || headers.includes('email address');
-          const hasFirstName = headers.includes('first name');
-          const hasLastName = headers.includes('last name');
-          const hasCategory = headers.includes('categoryname') || headers.includes('category name');
-          
-          const missing = [];
-          if (!hasFirstName) missing.push('first name');
-          if (!hasLastName) missing.push('last name');
-          if (!hasEmail) missing.push('email or email address');
-          if (!hasCategory) missing.push('categoryname');
-
-          if (missing.length > 0) {
-            setImportErrors([`CSV is missing required columns: ${missing.join(', ')}. Please use exact column names.`]);
-            setImporting(false);
-            e.target.value = '';
-            return;
-          }
+        const rawRows = results.data as any[];
+        if (rawRows.length === 0) {
+          setImporting(false);
+          e.target.value = '';
+          return;
         }
 
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
+        if (!ai) {
+          setImportErrors(['AI configuration is missing. Cannot process CSV.']);
+          setImporting(false);
+          e.target.value = '';
+          return;
+        }
+
+        setImportErrors([]);
+        let totalImported = 0;
+        let newErrors: string[] = [];
+        
+        // Filter out completely empty rows
+        const validRows = rawRows.filter(row => Object.keys(row).some(k => row[k] && row[k].trim() !== ''));
+        
+        const BATCH_SIZE = 20;
+        const totalBatches = Math.ceil(validRows.length / BATCH_SIZE);
+
+        for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+          setImportProgressMsg(`Processing batch ${batchIndex + 1} of ${totalBatches}...`);
           
-          // Normalize row keys (case-insensitive)
-          const normalizedRow: any = {};
-          Object.keys(row).forEach(key => {
-            normalizedRow[key.toLowerCase().trim()] = row[key];
-          });
-
-          const firstName = normalizedRow['first name']?.trim();
-          const lastName = normalizedRow['last name']?.trim();
-          const nomName = [firstName, lastName].filter(Boolean).join(' ');
+          const batch = validRows.slice(batchIndex * BATCH_SIZE, (batchIndex + 1) * BATCH_SIZE);
           
-          // Use 'email address' if 'email' has a non-email value like "Yes", or if 'email' is missing
-          let nomEmail = normalizedRow['email address']?.trim() || normalizedRow.email?.trim();
-          if (normalizedRow.email?.trim()?.toLowerCase() === 'yes' && normalizedRow['email address']) {
-            nomEmail = normalizedRow['email address']?.trim();
-          }
-
-          const catName = normalizedRow.categoryname?.trim() || normalizedRow['category name']?.trim();
-          const companyName = normalizedRow['company name']?.trim() || normalizedRow.company?.trim() || '';
-          const titleName = normalizedRow.tittle?.trim() || normalizedRow.title?.trim() || '';
-          
-          if (!firstName || !lastName || !nomEmail || !catName) {
-            errors.push(`Row ${i + 2}: Missing required data (first name, last name, email, or categoryName)`);
-            continue;
-          }
-
-          const cat = categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
-          if (!cat) {
-            errors.push(`Row ${i + 2}: Category "${catName}" not found in this award`);
-            continue;
-          }
-
-          const websiteValue = normalizedRow['website link']?.trim() || normalizedRow['website url']?.trim() || normalizedRow.website?.trim() || '';
-          const linkedinValue = normalizedRow['person linkedin']?.trim() || normalizedRow['linkedin url']?.trim() || normalizedRow.linkedin?.trim() || '';
-          const imageValue = normalizedRow['profile pic']?.trim() || normalizedRow['image url']?.trim() || normalizedRow.image?.trim() || normalizedRow.logourl?.trim() || '';
-
           try {
-            const docRef = await addDoc(collection(db, 'nominees'), {
-              awardId: id,
-              categoryId: cat.id,
-              name: nomName,
-              email: nomEmail,
-              description: normalizedRow.description?.trim() || '',
-              website: websiteValue,
-              linkedinUrl: linkedinValue,
-              title: titleName,
-              company: companyName,
-              logoUrl: imageValue,
-              aiSummary: '',
-              status: 'approved',
-              voteCount: 0,
-              submittedBy: user?.uid,
-              createdAt: new Date().toISOString()
+            const prompt = `
+You are a data mapping assistant. I am giving you a JSON array of raw CSV rows. 
+Your job is to map these rows into a strict JSON array of nominee objects.
+
+Requirements for each output object:
+- "name": Combine first and last name if separated, or use the company/person name provided.
+- "email": Find the email address (ignore "Yes" or non-email values).
+- "categoryName": Find the closest matching category name from the provided data.
+- "title": Job title (if any).
+- "company": Company name (if any).
+- "description": A brief bio or description. If missing, generate a short 1-sentence professional summary based on their title and company.
+- "website": URL (if any).
+- "linkedinUrl": LinkedIn URL (if any).
+- "logoUrl": Image/Logo URL (if any).
+
+Raw Data:
+${JSON.stringify(batch)}
+
+Return ONLY a valid JSON array of objects. Do not use markdown blocks like \`\`\`json. Just the raw JSON array.
+`;
+
+            const response = await ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: prompt,
             });
-            
-            setNominees(prev => [...prev, {
-              id: docRef.id,
-              awardId: id,
-              categoryId: cat.id,
-              name: nomName,
-              email: nomEmail,
-              description: normalizedRow.description?.trim() || '',
-              website: websiteValue,
-              linkedinUrl: linkedinValue,
-              title: titleName,
-              company: companyName,
-              logoUrl: imageValue,
-              status: 'approved',
-              voteCount: 0
-            }]);
-            addedCount++;
+
+            let jsonText = response.text || '[]';
+            if (jsonText.startsWith('\`\`\`json')) {
+              jsonText = jsonText.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
+            }
+            if (jsonText.startsWith('\`\`\`')) {
+              jsonText = jsonText.replace(/\`\`\`/g, '').trim();
+            }
+
+            const parsedNominees = JSON.parse(jsonText);
+
+            for (let i = 0; i < parsedNominees.length; i++) {
+              const nom = parsedNominees[i];
+              
+              if (!nom.name || !nom.email || !nom.categoryName) {
+                newErrors.push(`Batch ${batchIndex + 1}, Item ${i + 1}: AI failed to extract required name, email, or category.`);
+                continue;
+              }
+
+              const cat = categories.find(c => c.name.toLowerCase() === nom.categoryName.toLowerCase());
+              if (!cat) {
+                newErrors.push(`Batch ${batchIndex + 1}, Item ${i + 1}: Category "${nom.categoryName}" not found in this award.`);
+                continue;
+              }
+
+              const docRef = await addDoc(collection(db, 'nominees'), {
+                awardId: id,
+                categoryId: cat.id,
+                name: nom.name,
+                email: nom.email,
+                description: nom.description || '',
+                website: nom.website || '',
+                linkedinUrl: nom.linkedinUrl || '',
+                title: nom.title || '',
+                company: nom.company || '',
+                logoUrl: nom.logoUrl || '',
+                aiSummary: '',
+                status: 'approved',
+                voteCount: 0,
+                submittedBy: user?.uid,
+                createdAt: new Date().toISOString()
+              });
+              
+              setNominees(prev => [...prev, {
+                id: docRef.id,
+                awardId: id,
+                categoryId: cat.id,
+                name: nom.name,
+                email: nom.email,
+                description: nom.description || '',
+                website: nom.website || '',
+                linkedinUrl: nom.linkedinUrl || '',
+                title: nom.title || '',
+                company: nom.company || '',
+                logoUrl: nom.logoUrl || '',
+                status: 'approved',
+                voteCount: 0
+              }]);
+              
+              totalImported++;
+            }
           } catch (err) {
-            errors.push(`Row ${i + 2}: Database error saving nominee`);
+            console.error('Batch error:', err);
+            newErrors.push(`Batch ${batchIndex + 1} failed to process due to an AI or parsing error.`);
           }
         }
-        
-        if (errors.length > 0) {
-          setImportErrors(errors);
-        }
-        
-        if (addedCount > 0) {
-          alert(`Successfully imported ${addedCount} nominees!`);
-        }
-        
+
+        setImportErrors(newErrors);
         setImporting(false);
+        setImportProgressMsg('');
         e.target.value = '';
+        
+        if (totalImported > 0) {
+          alert(`Successfully imported ${totalImported} nominees via AI!`);
+        }
       }
     });
   };
@@ -663,15 +678,14 @@ export default function ManageAward() {
                   </div>
                   
                   <div className="space-y-6 text-sm text-[#444444]">
-                    <p>To bulk import nominees, your CSV file must have a header row with specific column names. The system is case-insensitive.</p>
+                    <p>Our new AI-powered importer automatically maps your CSV data. You don't need exact column names!</p>
                     
                     <div>
-                      <h4 className="font-bold text-[#111111] mb-2 text-base">Required Columns:</h4>
+                      <h4 className="font-bold text-[#111111] mb-2 text-base">How it works:</h4>
                       <ul className="list-disc pl-5 space-y-2">
-                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">first name</code>: The nominee's first name.</li>
-                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">last name</code>: The nominee's last name.</li>
-                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">email</code>: A valid contact email.</li>
-                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">categoryName</code>: Must exactly match one of your existing category names (e.g. "Best CRM").</li>
+                        <li>The AI will read your headers and intelligently extract the <strong>Name</strong>, <strong>Email</strong>, and <strong>Category</strong> (which must match your existing categories).</li>
+                        <li>It will also pull any extra details like <strong>Title</strong>, <strong>Company</strong>, <strong>LinkedIn</strong>, <strong>Website</strong>, and <strong>Image URL</strong>.</li>
+                        <li>If a nominee is missing a description, the AI will automatically generate a professional summary for them!</li>
                       </ul>
                     </div>
 
@@ -866,22 +880,28 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                   <Check className="h-4 w-4 mr-2" />
                   Approve All Pending
                 </button>
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileUpload}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    title="Upload CSV (columns: name, email, categoryName, description, website)"
-                  />
-                  <button
-                    disabled={importing}
-                    className="inline-flex items-center rounded-md bg-[#FAFAFA] px-4 py-2 text-sm font-semibold text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] hover:bg-gray-50 transition-colors disabled:opacity-50"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {importing ? 'Importing...' : 'Bulk Upload CSV'}
-                  </button>
-                </div>
+                {importing ? (
+                  <div className="flex items-center text-sm text-[#d97757] font-semibold gap-2 bg-[#d97757]/10 px-4 py-2 rounded-xl border border-[#d97757]/20">
+                    <div className="w-4 h-4 border-2 border-[#d97757] border-t-transparent rounded-full animate-spin"></div>
+                    {importProgressMsg || 'Importing...'}
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      title="Upload CSV"
+                    />
+                    <button
+                      className="inline-flex items-center rounded-md bg-[#FAFAFA] px-4 py-2 text-sm font-semibold text-[#111111] shadow-sm ring-1 ring-inset ring-[#EAEAEA] hover:bg-gray-50 transition-colors"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Bulk Upload CSV
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1032,15 +1052,14 @@ Jane,Smith,jane@test.com,Best Marketer,CMO,Test Inc,,,,,</pre>
                   </div>
                   
                   <div className="space-y-6 text-sm text-[#444444]">
-                    <p>To bulk import nominees, your CSV file must have a header row with specific column names. The system is case-insensitive.</p>
+                    <p>Our new AI-powered importer automatically maps your CSV data. You don't need exact column names!</p>
                     
                     <div>
-                      <h4 className="font-bold text-[#111111] mb-2 text-base">Required Columns:</h4>
+                      <h4 className="font-bold text-[#111111] mb-2 text-base">How it works:</h4>
                       <ul className="list-disc pl-5 space-y-2">
-                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">first name</code>: The nominee's first name.</li>
-                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">last name</code>: The nominee's last name.</li>
-                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">email</code>: A valid contact email.</li>
-                        <li><code className="bg-[#FAFAFA] border border-[#EAEAEA] px-1.5 py-0.5 rounded text-[#111111] font-semibold">categoryName</code>: Must exactly match one of your existing category names (e.g. "Best CRM").</li>
+                        <li>The AI will read your headers and intelligently extract the <strong>Name</strong>, <strong>Email</strong>, and <strong>Category</strong> (which must match your existing categories).</li>
+                        <li>It will also pull any extra details like <strong>Title</strong>, <strong>Company</strong>, <strong>LinkedIn</strong>, <strong>Website</strong>, and <strong>Image URL</strong>.</li>
+                        <li>If a nominee is missing a description, the AI will automatically generate a professional summary for them!</li>
                       </ul>
                     </div>
 
